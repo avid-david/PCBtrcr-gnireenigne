@@ -13,7 +13,13 @@ import {
   sourceImage,
   type FakeDeps,
 } from './fakePhotos.test-support';
-import { openProjectFile, packProject, projectNameOf, saveProjectFile } from './projectFiles';
+import {
+  exportProject,
+  openProjectFile,
+  packProject,
+  projectNameOf,
+  saveProjectFile,
+} from './projectFiles';
 
 /** A store with a photo on the top layer and one via. */
 function editedDeps(): FakeDeps {
@@ -115,5 +121,22 @@ describe('saving and opening project files', () => {
     expect(projectNameOf('amp.pcbrt')).toBe('amp');
     expect(projectNameOf('AMP.PCBRT')).toBe('AMP');
     expect(projectNameOf('amp.zip')).toBe('amp.zip');
+  });
+});
+
+describe('exporting', () => {
+  it('writes the chosen export named after the project and says so', () => {
+    const deps = editedDeps();
+    const written: { name: string; mime: string; text: string }[] = [];
+    exportProject(deps.store, 'netlist-csv', (name, bytes, mime) =>
+      written.push({ name, mime, text: new TextDecoder().decode(bytes) }),
+    );
+    expect(written).toEqual([
+      { name: 'board.csv', mime: 'text/csv', text: 'net,member\r\nNet 1,via:v1\r\n' },
+    ]);
+    expect(deps.store.getState().notice).toBe('Exported board.csv');
+    exportProject(deps.store, 'nope', () => {
+      throw new Error('must not write');
+    });
   });
 });

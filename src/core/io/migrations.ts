@@ -8,7 +8,13 @@ export type Migration = (doc: unknown) => unknown;
 /** Version 2 only adds feature kinds, so a version 1 document is valid as it is. */
 const v1ToV2: Migration = (doc) => ({ ...(doc as object), schemaVersion: 2 });
 
-export const MIGRATIONS: readonly Migration[] = [v1ToV2];
+/** Version 3 adds the net styles list; older files have none. */
+const v2ToV3: Migration = (doc) => {
+  const { project, ...rest } = doc as { project?: object };
+  return { ...rest, schemaVersion: 3, project: { ...project, netStyles: [] } };
+};
+
+export const MIGRATIONS: readonly Migration[] = [v1ToV2, v2ToV3];
 
 /** Applies every migration from `fromVersion` up to the current version. */
 export function migrate(

@@ -3,10 +3,10 @@
 An open-source browser tool for reverse engineering printed circuit boards from photographs: import top
 and bottom photos, align them, trace copper features, and let the tool derive and color the nets.
 
-> **Status:** milestone M5 — import, overlay and align top/bottom photos, trace copper (traces, vias,
-> pads, connection points, holes, planes) with nets coloured automatically, place components from a
-> footprint library, add silkscreen and notes, and save or open projects as `.pcbrt` files with
-> autosave. The nets panel and netlist export (M6) come next. See [docs/SPEC.md](docs/SPEC.md#milestones).
+> **Status:** v0.1.0 — import, overlay and align top/bottom photos, trace copper (traces, vias, pads,
+> connection points, holes, planes), place components from a footprint library, add silkscreen and
+> notes, name, colour, lock and highlight nets, export the netlist, and save or open `.pcbrt` files
+> with autosave. See [CHANGELOG.md](CHANGELOG.md). See [docs/SPEC.md](docs/SPEC.md#milestones).
 
 ## Using it
 
@@ -21,6 +21,8 @@ and bottom photos, align them, trace copper features, and let the tool derive an
 | Per layer | **Show photo**, **Show copper**, **Show silkscreen**, **Show notes**, **Mirror horizontally** (the bottom photo starts mirrored) |
 | Tools | Select `S`, Trace `T`, Via `V`, Pad `P`, Connection point `C`, Hole `H`, Component `U`, Plane `L`, Silkscreen `K`, Text `X`, Align `A` (left toolbar) |
 | Rotate / flip | `R` / `F` on selected components, or while placing one |
+| Units | **mm / mil** in the header (lengths are stored in mm; typing `10mil` or `0.25mm` works in either) |
+| Shortcuts | `?` or the **?** button lists every shortcut |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Y` (or `Ctrl+Shift+Z`), or the header buttons |
 | Grid snapping | `G` or the `#` toolbar button; the step is in the side panel |
 | Save / open | `Ctrl+S` / `Ctrl+O`, or **Save** / **Open…** (a `.pcbrt` file; see below) |
@@ -65,6 +67,15 @@ Tip: set **Overlay opacity** to 0 % while clicking, so only the active photo is 
 - **Silkscreen** (`K`): lines, or text (switch in the side panel). **Text** (`X`): notes that are not
   part of the board. Edit their text in the side panel.
 
+### Nets
+
+- The **Nets** tab lists every net with its colour, name and members (component pins like `R1.2`,
+  pads, vias). Filter by name; click ◉ to highlight a net on both layers (`Esc` clears).
+- Rename a net or pick its colour there; ↺ goes back to the automatic name and colour. When two
+  named nets are joined, the larger one keeps its name and colour and the status bar says so.
+- **Lock** protects a finished net: its features can no longer be selected, moved or deleted.
+- **Export Netlist (JSON)** / **(CSV)** downloads `<name>.json` / `<name>.csv`.
+
 ### Saving
 
 - **Save** (`Ctrl+S`) downloads `<name>.pcbrt`: a zip with `project.json` and the original photos,
@@ -98,6 +109,7 @@ pnpm dev            # http://localhost:5173
 | `pnpm test` | Vitest unit tests; add `--coverage` for coverage + thresholds |
 | `pnpm crap` | CRAP score per function (needs a prior `pnpm test --coverage`) |
 | `pnpm test:e2e` | Playwright end-to-end tests against the production build |
+| `pnpm perf` | Frame-rate check (2 × 24 MP photos, 5000 features) in a visible browser on the real GPU |
 
 The first `pnpm test:e2e` needs a browser: `pnpm exec playwright install chromium`.
 

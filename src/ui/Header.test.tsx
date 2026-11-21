@@ -11,18 +11,20 @@ const fileActions = () => ({
   saveProject: vi.fn(),
   restoreRecovery: vi.fn(),
   discardRecovery: vi.fn(),
+  exportProject: vi.fn(),
 });
 
 function renderHeader() {
   const store = createEditorStore();
   const onImportPhoto = vi.fn();
   const files = fileActions();
+  const onHelp = vi.fn();
   render(
     <EditorStoreContext value={store}>
-      <Header appName="App" onImportPhoto={onImportPhoto} files={files} />
+      <Header appName="App" onImportPhoto={onImportPhoto} files={files} onHelp={onHelp} />
     </EditorStoreContext>,
   );
-  return { store, onImportPhoto, files };
+  return { store, onImportPhoto, files, onHelp };
 }
 
 afterEach(() => {

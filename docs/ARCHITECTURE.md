@@ -5,8 +5,9 @@ PCB Reverse Tracer is a browser app (Vite + React + TypeScript). Rendering uses 
 is [ADR 0001](adr/0001-stack.md), coordinates are in [ADR 0002](adr/0002-coordinates-and-transforms.md),
 photo display in [ADR 0003](adr/0003-image-display.md), alignment in [ADR 0004](adr/0004-alignment.md)
 features, connectivity, undo and tools in [ADR 0005](adr/0005-features-connectivity-undo.md), and
-the project file and autosave in [ADR 0006](adr/0006-project-file-and-autosave.md), and
-footprints, components, planes, text and silkscreen in [ADR 0007](adr/0007-footprints-components-planes.md).
+the project file and autosave in [ADR 0006](adr/0006-project-file-and-autosave.md), 
+footprints, components, planes, text and silkscreen in [ADR 0007](adr/0007-footprints-components-planes.md),
+and net names, colours, locks and exporters in [ADR 0008](adr/0008-net-styles-and-exporters.md).
 
 ## Layers
 
@@ -24,11 +25,11 @@ Dependencies point inward. Arrows mean "may import".
 
 | Folder | Contents | May import | Exists since |
 | --- | --- | --- | --- |
-| `src/core/` | Pure domain logic: geometry, model (incl. copper features), alignment, connectivity, view, commands and undo history, io (project file format, versions, migrations, zip archive), footprints (JSON parts and parametric families). No DOM, React, PixiJS or browser APIs. | nothing outside `core` | M0 |
+| `src/core/` | Pure domain logic: geometry, model (incl. copper features), alignment, connectivity, view, commands and undo history, io (project file format, versions, migrations, zip archive), footprints (JSON parts and parametric families), export (netlist exporters). No DOM, React, PixiJS or browser APIs. | nothing outside `core` | M0 |
 | `src/tools/` | Interaction state machines: pan/zoom navigation, and the registered editing tools (select, trace, via, pad, point, hole, component, plane, silkscreen, text, align) with snapping. They return commands, never mutate. | `core` | M1 |
 | `src/render/` | `buildScene` (state → what to draw, incl. outline and alignment markers), the `Renderer` interface and its PixiJS implementation. Reads state, never mutates it. | `core`, `tools` (not `ui`) | M1 |
 | `src/ui/` | React components and the Zustand editor store. Thin: dispatch commands, show state, turn DOM events into tool inputs. | `core`, `tools` (not `render`) | M0 |
-| `src/platform/` | Image decoding, file download, key-value storage (IndexedDB) for autosave (later clipboard); browser vs desktop adapters. | `core` | M1 |
+| `src/platform/` | Image decoding, file download, key-value storage (IndexedDB) for autosave, per-browser preferences (later clipboard); browser vs desktop adapters. | `core` | M1 |
 | `src/app/` | Composition root: creates the store, image registry and renderer and wires them together; open/save (`projectFiles`), autosave and recovery (`autosave`, `persistence`). Nothing imports it. | everything | M0 |
 
 ## Data flow
@@ -57,7 +58,8 @@ store change ─► app/boardController (at most once per frame) ─► render/b
 - **Project** (`core/model`): what will be saved — layers, photo metadata, mirror flag, board size,
   corner clicks, matched points and features: copper (trace vertices tied to anchors by id),
   components with a copy of their footprint's pads, planes with their attached anchors, silkscreen
-  and notes. Changed
+  and notes, and the names, colours and locks of nets (stored against a member anchor and
+  reconciled after every edit, ADR 0008). Changed
   only by commands (`core/commands`). Alignment transforms, residuals, outlier flags, nets and net
   colours are derived from it, never stored.
 - **History** (`core/commands/history`): the project before each step; undo restores it exactly.

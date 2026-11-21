@@ -35,6 +35,12 @@ const idsOf = (f: Feature): string[] => [
     .filter((id) => id !== f.id),
 ];
 
+const strayNetStyles: Check = (project) => {
+  const anchors = anchorIndex(project);
+  const stray = project.netStyles.find((s) => !anchors.has(s.anchor));
+  return stray === undefined ? null : `a net style names the missing anchor ${stray.anchor}`;
+};
+
 const duplicateIds: Check = (project) => {
   const seen = new Set<string>();
   const duplicate = project.features.flatMap(idsOf).find((id) => {
@@ -57,6 +63,7 @@ const CHECKS: readonly Check[] = [
   duplicateIds,
   danglingTies,
   strayAttachments,
+  strayNetStyles,
   strayMatches,
   unknownLayers,
 ];

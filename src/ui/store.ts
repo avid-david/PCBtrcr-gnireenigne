@@ -78,11 +78,14 @@ export interface EditorStoreOptions {
   readonly newId?: () => string;
 }
 
-/** Everything except the screen size and settings starts over with another project. */
+/** Everything except the screen size, units and settings starts over with another project. */
 const replaceProject = (s: EditorState, project: Project): Partial<EditorState> => ({
   project,
   history: EMPTY_HISTORY,
-  view: fitToView({ ...createViewState(project), screen: s.view.screen }, project),
+  view: fitToView(
+    { ...createViewState(project), screen: s.view.screen, units: s.view.units },
+    project,
+  ),
   tool: activate('select'),
   selection: [],
   notice: null,

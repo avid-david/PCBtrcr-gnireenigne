@@ -10,6 +10,7 @@ export interface HeaderProps {
   readonly appName: string;
   readonly onImportPhoto: (layerId: LayerId, file: File) => void;
   readonly files: ProjectFileActions;
+  readonly onHelp: () => void;
 }
 
 const ACCEPTED_TYPES = 'image/png,image/jpeg,image/webp';
@@ -100,8 +101,30 @@ function UndoRedo() {
   );
 }
 
+/** Display unit for lengths (SPEC: mm or mil); the model stays in mm. */
+function UnitSwitch() {
+  const store = useEditorStore();
+  const units = useEditor((s) => s.view.units);
+  return (
+    <div className="segmented" role="group" aria-label="Units">
+      {(['mm', 'mil'] as const).map((unit) => (
+        <button
+          key={unit}
+          type="button"
+          aria-pressed={units === unit}
+          onClick={() => {
+            store.getState().updateView((view) => ({ ...view, units: unit }));
+          }}
+        >
+          {unit}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** Top bar: project file and import actions, undo/redo, active layer switch and fit-to-view. */
-export function Header({ appName, onImportPhoto, files }: HeaderProps) {
+export function Header({ appName, onImportPhoto, files, onHelp }: HeaderProps) {
   const store = useEditorStore();
   const layers = useEditor((s) => s.project.layers);
   return (
@@ -114,6 +137,7 @@ export function Header({ appName, onImportPhoto, files }: HeaderProps) {
         <ImportButton key={layer.id} layer={layer} onImportPhoto={onImportPhoto} />
       ))}
       <UndoRedo />
+      <UnitSwitch />
       <LayerSwitch />
       <button
         type="button"
@@ -124,6 +148,15 @@ export function Header({ appName, onImportPhoto, files }: HeaderProps) {
         }}
       >
         Fit to view
+      </button>
+      <button
+        type="button"
+        className="button"
+        aria-label="Keyboard shortcuts"
+        title="Keyboard shortcuts (?)"
+        onClick={onHelp}
+      >
+        ?
       </button>
     </header>
   );

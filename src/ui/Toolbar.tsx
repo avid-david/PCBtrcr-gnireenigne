@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react';
 import { TOOLS, TOOL_ORDER, type ToolId } from '../tools/registry';
 import { useEditor, useEditorStore } from './store';
 
@@ -16,6 +17,10 @@ const ICONS: Readonly<Record<ToolId, string>> = {
   align: '⌖',
 };
 
+const keepFocus = (e: MouseEvent) => {
+  e.preventDefault();
+};
+
 /** Tool buttons (SPEC F3: a shortcut for every tool, shown in its tooltip) and grid snapping. */
 export function Toolbar() {
   const store = useEditorStore();
@@ -31,6 +36,8 @@ export function Toolbar() {
           aria-label={TOOLS[id].label}
           aria-pressed={active === id}
           title={`${TOOLS[id].label} (${TOOLS[id].shortcut.toUpperCase()})`}
+          // Keep focus on the board: a focused button would take Enter, which finishes a trace.
+          onMouseDown={keepFocus}
           onClick={() => {
             store.getState().setTool(id);
           }}

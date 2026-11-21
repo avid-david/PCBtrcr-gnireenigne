@@ -20,6 +20,7 @@ function renderShell(store: EditorStore = createEditorStore()) {
     saveProject: vi.fn(),
     restoreRecovery: vi.fn(),
     discardRecovery: vi.fn(),
+    exportProject: vi.fn(),
   };
   const view = render(
     <EditorStoreContext value={store}>
@@ -49,7 +50,7 @@ describe('AppShell', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('PCB Reverse Tracer');
     expect(screen.getByRole('navigation', { name: 'Tools' })).toBeDefined();
     expect(screen.getByRole('main', { name: 'Board view' })).toBeDefined();
-    expect(screen.getByRole('complementary', { name: 'Layers' })).toBeDefined();
+    expect(screen.getByRole('complementary', { name: 'Side panel' })).toBeDefined();
     expect(screen.getByRole('contentinfo', { name: 'Status bar' })).toBeDefined();
   });
 

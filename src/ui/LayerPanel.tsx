@@ -120,17 +120,17 @@ function OverlayOpacity() {
   );
 }
 
-/** Side panel: per-layer photo settings and the overlay opacity; `children` go on top. */
+/** Layer settings and the overlay opacity; `children` (the inspector) go on top. */
 export function LayerPanel({ children }: { readonly children?: ReactNode }) {
   const layers = useEditor((s) => s.project.layers);
   return (
-    <aside className="shell__panel" aria-label="Layers">
+    <>
       {children}
       <h2 className="panel__title">Layers</h2>
       <OverlayOpacity />
       {layers.map((layer) => (
         <LayerRow key={layer.id} layer={layer} />
       ))}
-    </aside>
+    </>
   );
 }

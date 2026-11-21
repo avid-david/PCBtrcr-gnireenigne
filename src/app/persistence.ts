@@ -11,13 +11,20 @@ import {
   type AutosaveDeps,
   type AutosaveRecord,
 } from './autosave';
-import { openProjectFile, saveProjectFile, type ProjectFileDeps } from './projectFiles';
+import {
+  exportProject,
+  openProjectFile,
+  PROJECT_MIME_TYPE,
+  saveProjectFile,
+  type ProjectFileDeps,
+} from './projectFiles';
 
 export interface PersistenceDeps<F extends ImageFile, P>
   extends ProjectFileDeps<F, P>, Omit<AutosaveDeps<P>, 'storage'> {
   readonly storage: KeyValueStore;
   readonly readFile: (file: File) => Promise<Uint8Array>;
-  readonly writeFile: (fileName: string, bytes: Uint8Array) => void;
+  /** Hands a file to the user (a download in the browser). */
+  readonly writeFile: (fileName: string, bytes: Uint8Array, mimeType: string) => void;
 }
 
 export interface Persistence {
@@ -78,7 +85,12 @@ export function createPersistence<F extends ImageFile, P>(
         .catch(reporter(deps.store, 'Could not open the project'));
     },
     saveProject: () => {
-      saveProjectFile(deps.store, deps.images, deps.writeFile);
+      saveProjectFile(deps.store, deps.images, (name, bytes) => {
+        deps.writeFile(name, bytes, PROJECT_MIME_TYPE);
+      });
+    },
+    exportProject: (exporterId) => {
+      exportProject(deps.store, exporterId, deps.writeFile);
     },
     ...recoveryActions(deps, pending),
   };

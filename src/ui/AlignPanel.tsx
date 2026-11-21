@@ -7,7 +7,7 @@ import { previewProject } from '../tools/align';
 import { alignHint, pointLabel } from '../tools/alignHint';
 import { alignState } from './editorTransitions';
 import { useEditor, useEditorStore } from './store';
-import { parseMillimetres } from './units';
+import { formatLength, parseLength, unitLabel } from './units';
 
 const STATUS_TEXT: Readonly<Record<LayerAlignment['status'], string>> = {
   aligned: 'Aligned',
@@ -31,13 +31,21 @@ function SizeField(props: { label: string; value: string; onChange: (value: stri
   );
 }
 
+/** Switching units starts the form over, so its text is shown in the new unit. */
+function BoardSize() {
+  const unit = useEditor((s) => s.view.units);
+  return <BoardSizeForm key={unit} />;
+}
+
 function BoardSizeForm() {
   const store = useEditorStore();
   const board = useEditor((s) => s.project.board);
-  const [width, setWidth] = useState(board === null ? '' : String(board.widthMm));
-  const [height, setHeight] = useState(board === null ? '' : String(board.heightMm));
-  const widthMm = parseMillimetres(width);
-  const heightMm = parseMillimetres(height);
+  const unit = useEditor((s) => s.view.units);
+  const shown = (mm: number | undefined) => (mm === undefined ? '' : formatLength(mm, unit));
+  const [width, setWidth] = useState(shown(board?.widthMm));
+  const [height, setHeight] = useState(shown(board?.heightMm));
+  const widthMm = parseLength(width, unit);
+  const heightMm = parseLength(height, unit);
   return (
     <form
       className="board-size"
@@ -49,8 +57,8 @@ function BoardSizeForm() {
         }
       }}
     >
-      <SizeField label="Width (mm)" value={width} onChange={setWidth} />
-      <SizeField label="Height (mm)" value={height} onChange={setHeight} />
+      <SizeField label={unitLabel('Width (mm)', unit)} value={width} onChange={setWidth} />
+      <SizeField label={unitLabel('Height (mm)', unit)} value={height} onChange={setHeight} />
       <button type="submit" className="button" disabled={widthMm === null || heightMm === null}>
         Set size
       </button>
@@ -159,7 +167,7 @@ export function AlignPanel() {
   return (
     <div className="align-panel">
       <h2 className="panel__title">Alignment</h2>
-      <BoardSizeForm />
+      <BoardSize />
       <ModeSwitch />
       <p className="align-panel__hint" role="status" aria-label="Alignment hint">
         {hint}

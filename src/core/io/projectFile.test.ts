@@ -89,6 +89,22 @@ describe('project file round trip', () => {
     expect(roundTrip(project)).toEqual({ ok: true, value: project });
   });
 
+  it('keeps the names, colours and locks of nets', () => {
+    const project: Project = {
+      ...withFeatures([via('v1', { x: 0, y: 0 }), via('v2', { x: 1, y: 0 })]),
+      netStyles: [
+        { anchor: 'v1', name: 'GND', color: 0x00ff00, locked: true },
+        { anchor: 'v2', name: null, color: 0xff0000, locked: false },
+      ],
+    };
+    expect(roundTrip(project)).toEqual({ ok: true, value: project });
+    const stray = {
+      ...project,
+      netStyles: [{ anchor: 'gone', name: 'X', color: null, locked: false }],
+    };
+    expect(errorOf(roundTrip(stray))).toMatchObject({ kind: 'broken-reference' });
+  });
+
   it('keeps the board, photos, corners and matched points', () => {
     const base = createProject();
     const project: Project = {
@@ -229,10 +245,22 @@ describe('loading a damaged or foreign file', () => {
 });
 
 describe('migrations', () => {
-  it('upgrades version 1 by renumbering it: version 2 only adds feature kinds', () => {
+  it('has one step per version: 1 → 2 renumbers, 2 → 3 adds an empty net style list', () => {
     expect(MIGRATIONS).toHaveLength(CURRENT_SCHEMA_VERSION - 1);
-    expect(migrate({ schemaVersion: 1, a: 1 }, 1)).toEqual({ schemaVersion: 2, a: 1 });
-    expect(migrate({ schemaVersion: 2 }, 2)).toEqual({ schemaVersion: 2 });
+    const [v1ToV2, v2ToV3] = MIGRATIONS;
+    expect(v1ToV2?.({ schemaVersion: 1, project: { a: 1 } })).toEqual({
+      schemaVersion: 2,
+      project: { a: 1 },
+    });
+    expect(v2ToV3?.({ schemaVersion: 2, project: { a: 1 } })).toEqual({
+      schemaVersion: 3,
+      project: { a: 1, netStyles: [] },
+    });
+    expect(migrate({ schemaVersion: 1, project: {} }, 1)).toEqual({
+      schemaVersion: 3,
+      project: { netStyles: [] },
+    });
+    expect(migrate({ schemaVersion: 3 }, 3)).toEqual({ schemaVersion: 3 });
   });
 
   it('applies the steps after the file version, in order', () => {

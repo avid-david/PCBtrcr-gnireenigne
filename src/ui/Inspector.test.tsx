@@ -40,6 +40,11 @@ const commit = (label: string, value: string) => {
 };
 
 describe('Toolbar', () => {
+  it('does not take focus on mouse click, so Enter still reaches the active tool', () => {
+    renderUi();
+    expect(fireEvent.mouseDown(screen.getByRole('button', { name: 'Trace' }))).toBe(false);
+  });
+
   it('selects tools, shows shortcuts in tooltips and toggles grid snapping', () => {
     const store = renderUi();
     const trace = screen.getByRole('button', { name: 'Trace' });

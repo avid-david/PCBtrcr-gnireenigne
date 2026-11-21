@@ -2,10 +2,10 @@ import type { Project } from '../model/project';
 import { err, ok, type Result } from '../result';
 import { migrate } from './migrations';
 import { brokenReference } from './references';
-import { documentV2, projectV2 } from './schemaV2';
+import { documentV3, projectV3 } from './schemaV3';
 
 /** The schema version this build writes, and the newest it can read. */
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export type LoadError =
   | { readonly kind: 'invalid-json' }
@@ -20,7 +20,7 @@ export type LoadError =
  * created (a pad placed now or loaded from a file).
  */
 export function serializeProject(project: Project): string {
-  const canonical = projectV2.safeParse(project);
+  const canonical = projectV3.safeParse(project);
   const data = canonical.success ? canonical.data : project;
   return JSON.stringify({ schemaVersion: CURRENT_SCHEMA_VERSION, project: data }, null, 2);
 }
@@ -47,7 +47,7 @@ function versionOf(doc: unknown): Result<number, LoadError> {
 }
 
 function validate(doc: unknown): Result<Project, LoadError> {
-  const parsed = documentV2.safeParse(doc);
+  const parsed = documentV3.safeParse(doc);
   if (parsed.success) {
     return ok(parsed.data.project);
   }

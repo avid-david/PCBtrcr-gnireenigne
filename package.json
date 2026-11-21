@@ -1,6 +1,6 @@
 {
   "name": "pcb-reverse-tracer",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Reverse engineer printed circuit boards from photographs.",
   "license": "MIT",
@@ -20,7 +20,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "crap": "node scripts/crap.ts"
+    "crap": "node scripts/crap.ts",
+    "perf": "playwright test --config playwright.perf.config.ts"
   },
   "dependencies": {
     "fflate": "0.8.3",

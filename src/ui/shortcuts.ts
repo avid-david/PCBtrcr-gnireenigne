@@ -7,19 +7,29 @@ export interface Shortcut {
   readonly run: (store: EditorStore) => void;
   /** Whether it also works while typing in a text field (letters and edit keys must not). */
   readonly whileTyping: boolean;
+  /** One line for the shortcuts help overlay. */
+  readonly description: string;
 }
 
-export const always = (run: Shortcut['run']): Shortcut => ({ run, whileTyping: true });
-const notTyping = (run: Shortcut['run']): Shortcut => ({ run, whileTyping: false });
+export const always = (description: string, run: Shortcut['run']): Shortcut => ({
+  run,
+  whileTyping: true,
+  description,
+});
+const notTyping = (description: string, run: Shortcut['run']): Shortcut => ({
+  run,
+  whileTyping: false,
+  description,
+});
 
 /** Selecting the active tool again goes back to Select (so `A` toggles align mode). */
 const chooseTool = (id: ToolId) =>
-  notTyping((store) => {
+  notTyping(`${TOOLS[id].label} tool`, (store) => {
     store.getState().setTool(store.getState().tool.id === id ? 'select' : id);
   });
 
-const toolKey = (key: string) =>
-  notTyping((store) => {
+const toolKey = (key: string, description: string) =>
+  notTyping(description, (store) => {
     store.getState().sendTool({ type: 'key', key });
   });
 
@@ -33,36 +43,39 @@ const toolShortcuts = Object.fromEntries(
  */
 export type ShortcutMap = Readonly<Record<string, Shortcut>>;
 
+const redo = notTyping('Redo', (store) => {
+  store.getState().redo();
+});
+
 export const SHORTCUTS: ShortcutMap = {
   ...toolShortcuts,
-  Tab: always((store) => {
+  Tab: always('Switch the active layer', (store) => {
     store.getState().updateView(cycleActiveLayer);
   }),
-  Home: always((store) => {
+  Home: always('Fit the board to the view', (store) => {
     store.getState().updateView(fitToView);
   }),
-  Escape: always((store) => {
+  Escape: always('Cancel what the tool is doing; clear the net highlight', (store) => {
     store.getState().sendTool({ type: 'cancel' });
+    store
+      .getState()
+      .updateView((view) => (view.highlight === null ? view : { ...view, highlight: null }));
   }),
-  Enter: toolKey('Enter'),
-  Backspace: toolKey('Backspace'),
-  Delete: toolKey('Delete'),
-  r: toolKey('r'),
-  f: toolKey('f'),
-  g: notTyping((store) => {
+  Enter: toolKey('Enter', 'Finish a trace, plane or silkscreen line'),
+  Backspace: toolKey('Backspace', 'Remove the last point; delete the selection'),
+  Delete: toolKey('Delete', 'Delete the selection'),
+  r: toolKey('r', 'Rotate the selected (or next) component 90°'),
+  f: toolKey('f', 'Flip the selected (or next) component to the other side'),
+  g: notTyping('Snap to grid on or off', (store) => {
     store
       .getState()
       .updateSettings((s) => ({ ...s, grid: { ...s.grid, enabled: !s.grid.enabled } }));
   }),
-  'Ctrl+z': notTyping((store) => {
+  'Ctrl+z': notTyping('Undo', (store) => {
     store.getState().undo();
   }),
-  'Ctrl+y': notTyping((store) => {
-    store.getState().redo();
-  }),
-  'Ctrl+Shift+z': notTyping((store) => {
-    store.getState().redo();
-  }),
+  'Ctrl+y': redo,
+  'Ctrl+Shift+z': redo,
 };
 
 /** The shortcut name of a key event, e.g. "Ctrl+Shift+z", "Tab" or "t". */
