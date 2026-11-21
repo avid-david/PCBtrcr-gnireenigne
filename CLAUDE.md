@@ -27,6 +27,7 @@ src/
     commands/     undoable commands + history
     footprints/   footprint schema + parametric generators
     io/           versioned project (de)serialization + migrations
+    export/       exporters (netlist JSON/CSV), registered
   tools/      One file per editor tool, each a small state machine implementing `Tool`.
   render/     Draws the model; reads state, never mutates it.
   ui/         React components. Thin: dispatch commands, show state.
