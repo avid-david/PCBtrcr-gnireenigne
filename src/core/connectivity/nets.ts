@@ -1,4 +1,4 @@
-import { anchorsOf } from '../model/anchors';
+import { anchorsOf, joinsOf } from '../model/anchors';
 import type { AnchorId, Feature, FeatureId } from '../model/features';
 import type { Project } from '../model/project';
 import { UnionFind } from './unionFind';
@@ -17,22 +17,22 @@ export interface Net {
 export interface Nets {
   readonly nets: readonly Net[];
   netOfAnchor(id: AnchorId): Net | undefined;
-  /** Net of a feature's copper; `undefined` for features that cannot connect. */
+  /** Net of a feature's copper; `undefined` for features without one net (components, text…). */
   netOfFeature(id: FeatureId): Net | undefined;
 }
 
-/** Ties every anchor of one feature together (a trace is one conductor) and to its bindings. */
+/** Joins what the feature connects (e.g. a trace's vertices) and each bound anchor to its target. */
 function connect(sets: UnionFind, feature: Feature): void {
-  const anchors = anchorsOf(feature);
-  const first = anchors[0];
-  for (const anchor of anchors) {
+  for (const anchor of anchorsOf(feature)) {
     sets.add(anchor.id);
-    if (first !== undefined) {
-      sets.union(first.id, anchor.id);
-    }
     if (anchor.boundTo !== null) {
       sets.union(anchor.id, anchor.boundTo);
     }
+  }
+  for (const [first, ...rest] of joinsOf(feature)) {
+    rest.forEach((id) => {
+      sets.union(first ?? id, id);
+    });
   }
 }
 
@@ -54,7 +54,8 @@ const cache = new WeakMap<Project, Nets>();
 
 /**
  * Nets by union-find over explicit connections (SPEC "Connectivity"): a trace joins its own
- * vertices, and a bound vertex joins its anchor. Vias, plated holes and through-hole pads are
+ * vertices, a plane joins its attached anchors, and a bound vertex joins its anchor. A component's
+ * pads are separate anchors. Vias, plated holes and through-hole pads are
  * single anchors on every layer, so they join top and bottom nets.
  */
 export function deriveNets(project: Project): Nets {
@@ -75,7 +76,8 @@ export function deriveNets(project: Project): Nets {
   const byAnchor = new Map(nets.flatMap((net) => net.anchors.map((a) => [a, net] as const)));
   const byFeature = new Map(
     project.features.flatMap((f) => {
-      const net = byAnchor.get(anchorsOf(f)[0]?.id ?? '');
+      // A feature has one net when it joins its anchors (not a component, whose pads differ).
+      const net = byAnchor.get(joinsOf(f)[0]?.[0] ?? '');
       return net === undefined ? [] : [[f.id, net] as const];
     }),
   );

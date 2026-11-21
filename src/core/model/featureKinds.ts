@@ -1,8 +1,11 @@
 import { distance, rectDistance, segmentDistance } from '../geometry/distance';
+import { polygonDistance, polylineDistance } from '../geometry/polygon';
 import { boundsOfPoints, type Rect } from '../geometry/rect';
 import { add, type Vec2 } from '../geometry/vec2';
 import { anchorPosition } from './anchors';
+import { componentBounds, componentDistance } from './component';
 import type { Feature, FeatureKindName, Trace, TraceVertex } from './features';
+import { textBox } from './text';
 import type { LayerId, Project } from './project';
 
 /**
@@ -60,6 +63,28 @@ const traceKind: FeatureKind<Trace> = {
   translate: (f, delta) => ({ ...f, vertices: f.vertices.map((v) => moveVertex(v, delta)) }),
 };
 
+const onOwnLayer = (f: { readonly layerId: LayerId }, layerId: LayerId) => f.layerId === layerId;
+
+const NO_BOUNDS: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+
+const polyline = <F extends Feature>(
+  points: (f: F) => readonly Vec2[],
+  halfWidth: (f: F) => number,
+) => ({
+  bounds: (f: F) => {
+    const r = boundsOfPoints(points(f)) ?? NO_BOUNDS;
+    const w = halfWidth(f);
+    return { minX: r.minX - w, minY: r.minY - w, maxX: r.maxX + w, maxY: r.maxY + w };
+  },
+});
+
+const text = <F extends Feature & { at: Vec2; text: string; heightMm: number }>() => ({
+  onLayer: onOwnLayer,
+  bounds: (f: F) => textBox(f.at, f.text, f.heightMm),
+  distanceTo: (f: F, p: Vec2) => rectDistance(p, textBox(f.at, f.text, f.heightMm)),
+  translate: (f: F, delta: Vec2) => ({ ...f, at: add(f.at, delta) }),
+});
+
 const kinds: { readonly [K in FeatureKindName]: FeatureKind<Extract<Feature, { kind: K }>> } = {
   trace: traceKind,
   via: { onLayer: () => true, ...circle((f) => f.padMm / 2) },
@@ -71,6 +96,32 @@ const kinds: { readonly [K in FeatureKindName]: FeatureKind<Extract<Feature, { k
     distanceTo: (f, p) => rectDistance(p, square(f.at, { x: f.widthMm / 2, y: f.heightMm / 2 })),
     translate: (f, delta) => ({ ...f, at: add(f.at, delta) }),
   },
+  component: {
+    onLayer: onOwnLayer,
+    bounds: componentBounds,
+    distanceTo: componentDistance,
+    translate: (f, delta) => ({ ...f, at: add(f.at, delta) }),
+  },
+  plane: {
+    onLayer: onOwnLayer,
+    ...polyline(
+      (f) => f.outline,
+      () => 0,
+    ),
+    distanceTo: (f, p) => polygonDistance(p, f.outline),
+    translate: (f, delta) => ({ ...f, outline: f.outline.map((q) => add(q, delta)) }),
+  },
+  silkLine: {
+    onLayer: onOwnLayer,
+    ...polyline(
+      (f) => f.points,
+      (f) => f.widthMm / 2,
+    ),
+    distanceTo: (f, p) => Math.max(0, polylineDistance(p, f.points) - f.widthMm / 2),
+    translate: (f, delta) => ({ ...f, points: f.points.map((q) => add(q, delta)) }),
+  },
+  text: text(),
+  silkText: text(),
 };
 
 const kindOf = (f: Feature) => kinds[f.kind] as FeatureKind<Feature>;
