@@ -6,6 +6,7 @@ import {
   type NavigationEvent,
   type NavigationState,
 } from '../tools/navigation';
+import { forwardToAlign } from './alignInput';
 import type { EditorStore } from './store';
 
 const LINE_HEIGHT_PX = 16;
@@ -84,7 +85,7 @@ function listen<K extends keyof HTMLElementEventMap>(
   };
 }
 
-/** Wires pan/zoom gestures on `hostRef` to the navigation state machine and the store. */
+/** Wires pointer, wheel and space input on `hostRef` to navigation and (in align mode) the align tool. */
 export function useNavigation(hostRef: RefObject<HTMLElement | null>, store: EditorStore): void {
   const state = useRef<NavigationState>(INITIAL_NAVIGATION);
   useEffect(() => {
@@ -92,6 +93,8 @@ export function useNavigation(hostRef: RefObject<HTMLElement | null>, store: Edi
     if (host === null) {
       return undefined;
     }
+    // Navigation gets every event first (panning works in every mode); what it leaves goes to
+    // the align tool when align mode is on.
     const send: Send = (event) => {
       const before = store.getState().view.viewport;
       const result = navigate(state.current, before, event);
@@ -99,7 +102,7 @@ export function useNavigation(hostRef: RefObject<HTMLElement | null>, store: Edi
       if (result.viewport !== before) {
         store.getState().updateView((view) => ({ ...view, viewport: result.viewport }));
       }
-      return result.handled;
+      return result.handled || forwardToAlign(store, event);
     };
     const pointer = Object.entries(pointerListeners(host, send)) as [
       keyof HTMLElementEventMap,

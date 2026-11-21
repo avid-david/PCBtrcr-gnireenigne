@@ -1,8 +1,28 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
+import { solveAlignment } from '../core/alignment/alignment';
 import { setLayerMirrored } from '../core/commands/command';
 import type { Layer } from '../core/model/project';
 import { isPhotoVisible, setOverlayOpacity, setPhotoVisible } from '../core/view/viewState';
 import { useEditor, useEditorStore } from './store';
+
+/** Mirroring only applies before alignment: an aligned photo's transform already includes it. */
+function MirrorCheckbox({ layer }: { layer: Layer }) {
+  const store = useEditorStore();
+  const aligned = useEditor((s) => solveAlignment(s.project).get(layer.id)?.status === 'aligned');
+  return (
+    <label title={aligned ? 'The alignment already accounts for mirroring.' : undefined}>
+      <input
+        type="checkbox"
+        checked={layer.mirrored}
+        disabled={aligned}
+        onChange={(e) => {
+          store.getState().dispatch(setLayerMirrored(layer.id, e.target.checked));
+        }}
+      />{' '}
+      Mirror horizontally
+    </label>
+  );
+}
 
 function LayerRow({ layer }: { layer: Layer }) {
   const store = useEditorStore();
@@ -26,16 +46,7 @@ function LayerRow({ layer }: { layer: Layer }) {
         />{' '}
         Show photo
       </label>
-      <label>
-        <input
-          type="checkbox"
-          checked={layer.mirrored}
-          onChange={(e) => {
-            store.getState().dispatch(setLayerMirrored(layer.id, e.target.checked));
-          }}
-        />{' '}
-        Mirror horizontally
-      </label>
+      <MirrorCheckbox layer={layer} />
     </fieldset>
   );
 }
@@ -64,11 +75,12 @@ function OverlayOpacity() {
   );
 }
 
-/** Side panel: per-layer photo settings and the overlay opacity of the inactive layer. */
-export function LayerPanel() {
+/** Side panel: per-layer photo settings and the overlay opacity; `children` go on top. */
+export function LayerPanel({ children }: { readonly children?: ReactNode }) {
   const layers = useEditor((s) => s.project.layers);
   return (
     <aside className="shell__panel" aria-label="Layers">
+      {children}
       <h2 className="panel__title">Layers</h2>
       <OverlayOpacity />
       {layers.map((layer) => (

@@ -42,6 +42,14 @@ module.exports = {
       to: { path: '^src/(platform|app)/' },
     },
     {
+      name: 'ui-and-render-are-independent',
+      severity: 'error',
+      comment:
+        'ui and render are siblings; only app connects them (shared logic belongs in tools).',
+      from: { path: '^src/(render|ui)/' },
+      to: { path: '^src/(render|ui)/', pathNot: '^src/$1/' },
+    },
+    {
       name: 'platform-only-uses-core',
       severity: 'error',
       comment: 'platform adapters may depend on core types only.',

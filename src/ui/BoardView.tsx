@@ -32,6 +32,7 @@ export function BoardView({ mountBoard }: BoardViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const store = useEditorStore();
   const hasPhotos = useEditor((s) => s.project.layers.some((l) => l.image !== null));
+  const aligning = useEditor((s) => s.align !== null);
   useEffect(() => {
     const host = hostRef.current;
     return host === null ? undefined : mountBoard(host);
@@ -40,7 +41,11 @@ export function BoardView({ mountBoard }: BoardViewProps) {
   useNavigation(hostRef, store);
   return (
     <main className="shell__canvas" aria-label="Board view">
-      <div ref={hostRef} className="board" data-testid="board-host" />
+      <div
+        ref={hostRef}
+        className={aligning ? 'board board--aligning' : 'board'}
+        data-testid="board-host"
+      />
       {hasPhotos ? null : <p className="shell__empty">Import a photo to start.</p>}
     </main>
   );
