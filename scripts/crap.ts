@@ -39,7 +39,7 @@ async function measureComplexity(): Promise<ComplexityEntry[]> {
   const eslint = new ESLint({
     overrideConfig: { rules: { complexity: ['warn', 0] } },
     ruleFilter: ({ ruleId }) => ruleId === 'complexity',
-    ignorePatterns: ['**/*.test.ts', '**/*.test.tsx'],
+    ignorePatterns: ['**/*.test.ts', '**/*.test.tsx', '**/*.test-support.ts'],
   });
   const results = await eslint.lintFiles(['src/**/*.{ts,tsx}']);
   return results.flatMap((result) =>

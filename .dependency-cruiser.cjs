@@ -2,7 +2,7 @@
  * Layer boundaries from CLAUDE.md ("Architecture: layered, dependencies point inward").
  * @type {import('dependency-cruiser').IConfiguration}
  */
-const TESTS = String.raw`\.test\.tsx?$`;
+const TESTS = String.raw`\.test(-support)?\.tsx?$`;
 
 module.exports = {
   forbidden: [
