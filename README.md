@@ -3,9 +3,10 @@
 An open-source browser tool for reverse engineering printed circuit boards from photographs: import top
 and bottom photos, align them, trace copper features, and let the tool derive and color the nets.
 
-> **Status:** milestone M4 — import, overlay and align top/bottom photos, trace copper (traces, vias,
-> pads, connection points, holes) with nets coloured automatically and unlimited undo, and save or
-> open projects as `.pcbrt` files with autosave. Footprints (M5) come next. See [docs/SPEC.md](docs/SPEC.md#milestones).
+> **Status:** milestone M5 — import, overlay and align top/bottom photos, trace copper (traces, vias,
+> pads, connection points, holes, planes) with nets coloured automatically, place components from a
+> footprint library, add silkscreen and notes, and save or open projects as `.pcbrt` files with
+> autosave. The nets panel and netlist export (M6) come next. See [docs/SPEC.md](docs/SPEC.md#milestones).
 
 ## Using it
 
@@ -17,8 +18,9 @@ and bottom photos, align them, trace copper features, and let the tool derive an
 | Zoom | Mouse wheel (zooms around the cursor) |
 | Fit to view | `Home` or **Fit to view** |
 | Overlay | **Overlay opacity** slider: how strongly the inactive layer shows over the active one |
-| Per layer | **Show photo**, **Mirror horizontally** (the bottom photo starts mirrored) |
-| Tools | Select `S`, Trace `T`, Via `V`, Pad `P`, Connection point `C`, Hole `H`, Align `A` (left toolbar) |
+| Per layer | **Show photo**, **Show copper**, **Show silkscreen**, **Show notes**, **Mirror horizontally** (the bottom photo starts mirrored) |
+| Tools | Select `S`, Trace `T`, Via `V`, Pad `P`, Connection point `C`, Hole `H`, Component `U`, Plane `L`, Silkscreen `K`, Text `X`, Align `A` (left toolbar) |
+| Rotate / flip | `R` / `F` on selected components, or while placing one |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Y` (or `Ctrl+Shift+Z`), or the header buttons |
 | Grid snapping | `G` or the `#` toolbar button; the step is in the side panel |
 | Save / open | `Ctrl+S` / `Ctrl+O`, or **Save** / **Open…** (a `.pcbrt` file; see below) |
@@ -48,6 +50,20 @@ Tip: set **Overlay opacity** to 0 % while clicking, so only the active photo is 
   defaults for the next one.
 - Everything electrically connected shares one colour. Features on the inactive layer are dimmed and
   can only be edited from their own layer.
+
+### Components, planes, silkscreen and notes
+
+- **Component** (`U`): pick a footprint in the side panel (pin headers, chip sizes 0201–2512,
+  SOIC, TSSOP, DIP, SOT-23, TO-92, TO-220, or a pad grid for unknown parts), set its parameters,
+  designator prefix and value, then click to place. Designators count up (R1, R2…). `R` turns the
+  part, `F` places it on the other side. Each pad is its own anchor, so traces snap to pads.
+- Select a component to edit its designator, value and rotation, or press `R` / `F`. Flipping
+  releases traces from the old side; they keep their shape.
+- **Plane** (`L`): click the corners of a copper pour, double-click or `Enter` to finish. Pads and
+  vias join its net only when attached: **Attach anchors inside outline**, or select the plane and
+  some pads or vias (Shift) and press **Attach … to plane**.
+- **Silkscreen** (`K`): lines, or text (switch in the side panel). **Text** (`X`): notes that are not
+  part of the board. Edit their text in the side panel.
 
 ### Saving
 

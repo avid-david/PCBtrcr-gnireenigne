@@ -1,24 +1,28 @@
-import { useId, useState } from 'react';
+import { useId, useState, type ReactElement } from 'react';
 import type { Feature } from '../core/model/features';
 import type { LayerId } from '../core/model/project';
 import type { Field } from './featureFields';
-import { parseMillimetres } from './units';
+import { parseMillimetres, parseNumber } from './units';
 
-interface MmInputProps {
+interface CommitInputProps<T> {
   readonly label: string;
-  readonly value: number;
-  readonly onCommit: (value: number) => void;
+  readonly value: T;
+  /** Turns the typed text into a value; `null` rejects it and restores the last value. */
+  readonly parse: (text: string) => T | null;
+  readonly onCommit: (value: T) => void;
+  readonly inputMode?: 'decimal' | 'text';
 }
 
 /**
- * A length in mm; commits on Enter or when leaving the field, and reverts invalid input.
- * Give it a `key` that changes with the value so outside changes reset the text.
+ * A text field that commits on Enter or when leaving it, so typing a word is one edit (one
+ * undo step), not one per key. Give it a `key` that changes with the value so outside changes
+ * reset the text.
  */
-export function MmInput({ label, value, onCommit }: MmInputProps) {
+export function CommitInput<T>({ label, value, parse, onCommit, inputMode }: CommitInputProps<T>) {
   const id = useId();
   const [text, setText] = useState(String(value));
   const commit = () => {
-    const parsed = parseMillimetres(text);
+    const parsed = parse(text);
     if (parsed === null) {
       setText(String(value));
     } else if (parsed !== value) {
@@ -30,7 +34,7 @@ export function MmInput({ label, value, onCommit }: MmInputProps) {
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
-        inputMode="decimal"
+        inputMode={inputMode ?? 'text'}
         value={text}
         onChange={(e) => {
           setText(e.target.value);
@@ -46,41 +50,86 @@ export function MmInput({ label, value, onCommit }: MmInputProps) {
   );
 }
 
+interface MmInputProps {
+  readonly label: string;
+  readonly value: number;
+  readonly onCommit: (value: number) => void;
+}
+
+/** A length in mm (positive, decimal comma accepted). */
+export const MmInput = (props: MmInputProps) => (
+  <CommitInput {...props} parse={parseMillimetres} inputMode="decimal" />
+);
+
+const asText = (text: string): string => text;
+
 interface FieldEditorProps {
   readonly field: Field<Feature>;
   readonly feature: Feature;
   readonly context: { readonly layerId: LayerId; readonly onChange: (f: Feature) => void };
 }
 
-/** Renders one inspector field according to its type. */
-export function FieldEditor({ field, feature, context }: FieldEditorProps) {
-  if (field.type === 'mm') {
-    return field.visible?.(feature) === false ? null : (
+type Editor<T extends Field<Feature>['type']> = (
+  props: FieldEditorProps & { field: Extract<Field<Feature>, { type: T }> },
+) => ReactElement | null;
+
+const keyOf = (feature: Feature, value: unknown) => `${feature.id}:${String(value)}`;
+
+/** One editor per field type. */
+const EDITORS: { readonly [T in Field<Feature>['type']]: Editor<T> } = {
+  mm: ({ field, feature, context }) =>
+    field.visible?.(feature) === false ? null : (
       <MmInput
-        key={`${feature.id}:${String(field.get(feature))}`}
+        key={keyOf(feature, field.get(feature))}
         label={field.label}
         value={field.get(feature)}
         onCommit={(v) => {
           context.onChange(field.set(feature, v));
         }}
       />
-    );
-  }
-  if (field.type === 'check') {
-    return (
-      <label className="field field--check">
-        <input
-          type="checkbox"
-          checked={field.get(feature)}
-          onChange={(e) => {
-            context.onChange(field.set(feature, e.target.checked));
-          }}
-        />{' '}
-        {field.label}
-      </label>
-    );
-  }
-  return <ChoiceField field={field} feature={feature} context={context} />;
+    ),
+  degrees: ({ field, feature, context }) => (
+    <CommitInput
+      key={keyOf(feature, field.get(feature))}
+      label={field.label}
+      value={field.get(feature)}
+      parse={parseNumber}
+      inputMode="decimal"
+      onCommit={(v) => {
+        context.onChange(field.set(feature, v));
+      }}
+    />
+  ),
+  text: ({ field, feature, context }) => (
+    <CommitInput
+      key={keyOf(feature, field.get(feature))}
+      label={field.label}
+      value={field.get(feature)}
+      parse={asText}
+      onCommit={(v) => {
+        context.onChange(field.set(feature, v));
+      }}
+    />
+  ),
+  check: ({ field, feature, context }) => (
+    <label className="field field--check">
+      <input
+        type="checkbox"
+        checked={field.get(feature)}
+        onChange={(e) => {
+          context.onChange(field.set(feature, e.target.checked));
+        }}
+      />{' '}
+      {field.label}
+    </label>
+  ),
+  choice: (props) => <ChoiceField {...props} />,
+};
+
+/** Renders one inspector field according to its type. */
+export function FieldEditor(props: FieldEditorProps) {
+  const editor = EDITORS[props.field.type] as Editor<Field<Feature>['type']>;
+  return editor(props);
 }
 
 /** A select box for a choice field. */

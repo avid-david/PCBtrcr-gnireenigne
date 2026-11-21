@@ -1,6 +1,6 @@
 import { addFeature } from '../core/commands/features';
 import type { Vec2 } from '../core/geometry/vec2';
-import type { Feature, FeatureKindName } from '../core/model/features';
+import type { Feature } from '../core/model/features';
 import type { LayerId } from '../core/model/project';
 import { snapToGrid } from './snap';
 import type { ToolSettings } from './settings';
@@ -11,7 +11,8 @@ export interface PlaceState {
   readonly cursor: Vec2 | null;
 }
 
-type PlacedKind = Exclude<FeatureKindName, 'trace'>;
+/** Kinds placed with one click. */
+export type PlacedKind = 'via' | 'hole' | 'point' | 'pad' | 'text' | 'silkText';
 
 interface Placement {
   readonly id: string;
@@ -35,19 +36,28 @@ const makers: { readonly [K in PlacedKind]: (p: Placement) => Extract<Feature, {
     layerId: settings.pad.throughHole ? null : layerId,
     drillMm: settings.pad.drillMm,
   }),
+  text: ({ id, at, layerId, settings }) => ({ kind: 'text', id, at, layerId, ...settings.text }),
+  silkText: ({ id, at, layerId, settings }) => ({
+    kind: 'silkText',
+    id,
+    at,
+    layerId,
+    text: settings.silk.text,
+    heightMm: settings.silk.heightMm,
+  }),
 };
 
-const make = (kind: PlacedKind, p: Placement): Feature =>
+export const make = (kind: PlacedKind, p: Placement): Feature =>
   (makers[kind] as (p: Placement) => Feature)(p);
 
-interface PlaceToolInfo {
+export interface PlaceToolInfo {
   readonly kind: PlacedKind;
   readonly label: string;
   readonly shortcut: string;
   readonly hint: string;
 }
 
-function placeHandlers(info: PlaceToolInfo): ToolHandlers<PlaceState> {
+export function placeHandlers(info: Pick<PlaceToolInfo, 'kind'>): ToolHandlers<PlaceState> {
   return {
     pointermove: (_s, e, ctx) => stateOnly({ cursor: snapToGrid(e.board, ctx.settings.grid) }),
     pointerdown: (s, e, ctx) => {
@@ -122,16 +132,31 @@ export const holeTool = placeTool({
   hint: 'Click to place a hole: plated holes connect both layers, mechanical ones do not.',
 });
 
+export const textTool = placeTool({
+  kind: 'text',
+  label: 'Text',
+  shortcut: 'x',
+  hint: 'Click to place a note (not part of the board). Edit its text in the side panel.',
+});
+
+/** Kinds whose defaults the inspector can show before anything is placed. */
+export type TemplateKind = PlacedKind | 'trace' | 'silkLine';
+
 /**
  * A feature built from the current defaults, for showing and editing them in the inspector
  * before anything is placed.
  */
 export function templateFeature(
-  kind: FeatureKindName,
+  kind: TemplateKind,
   settings: ToolSettings,
   layerId: LayerId,
 ): Feature {
-  return kind === 'trace'
-    ? { kind: 'trace', id: 'defaults', layerId, widthMm: settings.trace.widthMm, vertices: [] }
-    : make(kind, { id: 'defaults', at: { x: 0, y: 0 }, layerId, settings });
+  const id = 'defaults';
+  if (kind === 'trace') {
+    return { kind, id, layerId, widthMm: settings.trace.widthMm, vertices: [] };
+  }
+  if (kind === 'silkLine') {
+    return { kind, id, layerId, widthMm: settings.silk.widthMm, points: [] };
+  }
+  return make(kind, { id, at: { x: 0, y: 0 }, layerId, settings });
 }

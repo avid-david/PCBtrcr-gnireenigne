@@ -1,16 +1,7 @@
-import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { strFromU8, unzipSync } from 'fflate';
 import { bottomPhoto, CORNER_COLORS, topPhoto } from './support/boardPhotos';
-import { clickBlob, importPhoto, startAligning } from './support/editor';
-
-/** Saves with Ctrl+S and returns the downloaded file's name and bytes. */
-async function save(page: Page): Promise<{ name: string; bytes: Uint8Array }> {
-  const download = page.waitForEvent('download');
-  await page.keyboard.press('Control+s');
-  const file = await download;
-  return { name: file.suggestedFilename(), bytes: await readFile(await file.path()) };
-}
+import { clickBlob, importPhoto, save, startAligning } from './support/editor';
 
 interface Autosaved {
   readonly dirty: boolean;

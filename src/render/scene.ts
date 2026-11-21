@@ -11,7 +11,8 @@ import { toolOverlay, toolPreview, type ActiveTool } from '../tools/registry';
 import type { ToolSettings } from '../tools/settings';
 import type { ToolOverlay } from '../tools/tool';
 import { alignMarkers, boardOutline, type SceneMarker } from './alignOverlay';
-import { featureDrawables, selectedFeatures, type FeatureDrawable } from './featureScene';
+import { featureScene, selectedFeatures, type FeatureDrawable } from './featureScene';
+import type { TextItem } from './textItems';
 
 /** One photo to draw: which image, where it sits in board space and how opaque it is. */
 export interface SceneLayer {
@@ -30,6 +31,8 @@ export interface Scene {
   readonly outline: readonly Vec2[] | null;
   /** Copper in drawing order; the same array while nothing changed (cheap to compare). */
   readonly features: readonly FeatureDrawable[];
+  /** Silkscreen text, notes and designators; the same array while nothing changed. */
+  readonly texts: readonly TextItem[];
   /** Bounds of selected features, for the highlight. */
   readonly selection: readonly Rect[];
   /** Alignment points (align tool only). */
@@ -78,11 +81,13 @@ export function buildScene(input: SceneInput): Scene {
     settings: input.settings,
     newId: () => '',
   };
+  const features = featureScene(project, view);
   return {
     viewport: view.viewport,
     layers: photoLayers(project, view),
     outline: boardOutline(project),
-    features: featureDrawables(project, view.activeLayerId),
+    features: features.drawables,
+    texts: features.texts,
     selection: selectedFeatures(project, input.selection).map((f) => featureBounds(f, project)),
     markers: tool.id === 'align' ? alignMarkers(project, tool.state, view.activeLayerId) : [],
     toolOverlay: toolOverlay(tool, ctx),

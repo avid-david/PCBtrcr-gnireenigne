@@ -1,0 +1,93 @@
+{
+  "id": "sot-23-5",
+  "label": "SOT-23-5",
+  "prefix": "U",
+  "footprint": {
+    "name": "SOT-23-5",
+    "pads": [
+      {
+        "number": "1",
+        "at": {
+          "x": -1.1375,
+          "y": -0.95
+        },
+        "shape": "rect",
+        "widthMm": 1.325,
+        "heightMm": 0.6,
+        "drillMm": 0
+      },
+      {
+        "number": "2",
+        "at": {
+          "x": -1.1375,
+          "y": 0
+        },
+        "shape": "rect",
+        "widthMm": 1.325,
+        "heightMm": 0.6,
+        "drillMm": 0
+      },
+      {
+        "number": "3",
+        "at": {
+          "x": -1.1375,
+          "y": 0.95
+        },
+        "shape": "rect",
+        "widthMm": 1.325,
+        "heightMm": 0.6,
+        "drillMm": 0
+      },
+      {
+        "number": "4",
+        "at": {
+          "x": 1.1375,
+          "y": 0.95
+        },
+        "shape": "rect",
+        "widthMm": 1.325,
+        "heightMm": 0.6,
+        "drillMm": 0
+      },
+      {
+        "number": "5",
+        "at": {
+          "x": 1.1375,
+          "y": -0.95
+        },
+        "shape": "rect",
+        "widthMm": 1.325,
+        "heightMm": 0.6,
+        "drillMm": 0
+      }
+    ],
+    "outline": [
+      [
+        {
+          "x": -0.8,
+          "y": -1.05
+        },
+        {
+          "x": -0.4,
+          "y": -1.45
+        },
+        {
+          "x": 0.8,
+          "y": -1.45
+        },
+        {
+          "x": 0.8,
+          "y": 1.45
+        },
+        {
+          "x": -0.8,
+          "y": 1.45
+        },
+        {
+          "x": -0.8,
+          "y": -1.05
+        }
+      ]
+    ]
+  }
+}

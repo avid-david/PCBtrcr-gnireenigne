@@ -2,7 +2,14 @@ import { useId, type ReactNode } from 'react';
 import { solveAlignment } from '../core/alignment/alignment';
 import { setLayerMirrored } from '../core/commands/command';
 import type { Layer } from '../core/model/project';
-import { isPhotoVisible, setOverlayOpacity, setPhotoVisible } from '../core/view/viewState';
+import {
+  isContentVisible,
+  isPhotoVisible,
+  setContentVisible,
+  setOverlayOpacity,
+  setPhotoVisible,
+  type LayerContent,
+} from '../core/view/viewState';
 import { useEditor, useEditorStore } from './store';
 
 /** Mirroring only applies before alignment: an aligned photo's transform already includes it. */
@@ -20,6 +27,41 @@ function MirrorCheckbox({ layer }: { layer: Layer }) {
         }}
       />{' '}
       Mirror horizontally
+    </label>
+  );
+}
+
+const CONTENTS: readonly { readonly content: LayerContent; readonly label: string }[] = [
+  { content: 'copper', label: 'Copper' },
+  { content: 'silk', label: 'Silkscreen' },
+  { content: 'text', label: 'Notes' },
+];
+
+/** Show/hide toggles for what is drawn on a layer (SPEC "Layers and overlay"). */
+function ContentToggle({
+  layer,
+  content,
+  label,
+}: {
+  layer: Layer;
+  content: LayerContent;
+  label: string;
+}) {
+  const store = useEditorStore();
+  const visible = useEditor((s) => isContentVisible(s.view, layer.id, content));
+  return (
+    <label>
+      <input
+        type="checkbox"
+        checked={visible}
+        onChange={(e) => {
+          const show = e.target.checked;
+          store
+            .getState()
+            .updateView((view) => setContentVisible(view, { layerId: layer.id, content }, show));
+        }}
+      />{' '}
+      Show {label.toLowerCase()}
     </label>
   );
 }
@@ -46,6 +88,9 @@ function LayerRow({ layer }: { layer: Layer }) {
         />{' '}
         Show photo
       </label>
+      {CONTENTS.map((c) => (
+        <ContentToggle key={c.content} layer={layer} content={c.content} label={c.label} />
+      ))}
       <MirrorCheckbox layer={layer} />
     </fieldset>
   );

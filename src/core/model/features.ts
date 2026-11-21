@@ -1,7 +1,7 @@
 import type { Vec2 } from '../geometry/vec2';
 import type { LayerId } from './ids';
 
-// Copper features drawn by the user (SPEC F3). Positions are in board mm. Features are plain
+// Features drawn by the user (SPEC F3). Positions are in board mm. Features are plain
 // data; their behaviour (anchors, bounds, hit-testing, moving) is registered per kind in
 // featureKinds.ts, so new kinds do not need switch statements elsewhere.
 
@@ -64,5 +64,85 @@ export interface ConnectionPoint {
   readonly diameterMm: number;
 }
 
-export type Feature = Trace | Via | Hole | Pad | ConnectionPoint;
+/** A pad of a placed component, in the component's own frame (see model/component.ts). */
+export interface ComponentPad {
+  readonly id: AnchorId;
+  /** Pin number or name, unique within the component ("1", "A3"). */
+  readonly number: string;
+  readonly at: Vec2;
+  readonly shape: PadShape;
+  readonly widthMm: number;
+  readonly heightMm: number;
+  /** Drill diameter; 0 for a surface-mount pad. */
+  readonly drillMm: number;
+}
+
+/** Library entry a component was placed from, kept for display and re-placing. */
+export interface FootprintRef {
+  readonly id: string;
+  readonly name: string;
+  readonly params: Readonly<Record<string, number | string>>;
+}
+
+/**
+ * A placed footprint. Its pads and outline are copied from the footprint when it is placed, so
+ * later library changes never move pads of saved projects (docs/adr/0007).
+ */
+export interface Component {
+  readonly kind: 'component';
+  readonly id: FeatureId;
+  /** Copper layer it is mounted on; its surface-mount pads are on this layer. */
+  readonly layerId: LayerId;
+  /** Mounted on the bottom side: seen from the top, the footprint is mirrored. */
+  readonly flipped: boolean;
+  readonly at: Vec2;
+  /** Clockwise on screen (board y points down). */
+  readonly rotationDeg: number;
+  readonly designator: string;
+  readonly value: string;
+  readonly footprint: FootprintRef;
+  readonly pads: readonly ComponentPad[];
+  readonly outline: readonly (readonly Vec2[])[];
+}
+
+/** A copper pour on one layer. Anchors listed in `attached` join its net (SPEC "Connectivity"). */
+export interface Plane {
+  readonly kind: 'plane';
+  readonly id: FeatureId;
+  readonly layerId: LayerId;
+  readonly outline: readonly Vec2[];
+  readonly attached: readonly AnchorId[];
+}
+
+/** A free annotation, not part of the board. */
+export interface TextNote {
+  readonly kind: 'text';
+  readonly id: FeatureId;
+  readonly layerId: LayerId;
+  readonly at: Vec2;
+  readonly text: string;
+  readonly heightMm: number;
+}
+
+/** A silkscreen line (polyline) printed on one side. */
+export interface SilkLine {
+  readonly kind: 'silkLine';
+  readonly id: FeatureId;
+  readonly layerId: LayerId;
+  readonly points: readonly Vec2[];
+  readonly widthMm: number;
+}
+
+/** Silkscreen text printed on one side. */
+export interface SilkText {
+  readonly kind: 'silkText';
+  readonly id: FeatureId;
+  readonly layerId: LayerId;
+  readonly at: Vec2;
+  readonly text: string;
+  readonly heightMm: number;
+}
+
+export type Feature =
+  Trace | Via | Hole | Pad | ConnectionPoint | Component | Plane | TextNote | SilkLine | SilkText;
 export type FeatureKindName = Feature['kind'];

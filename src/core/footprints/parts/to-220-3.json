@@ -1,0 +1,77 @@
+{
+  "id": "to-220-3",
+  "label": "TO-220-3 (vertical)",
+  "prefix": "Q",
+  "footprint": {
+    "name": "TO-220-3_Vertical",
+    "pads": [
+      {
+        "number": "1",
+        "at": {
+          "x": -2.54,
+          "y": 0
+        },
+        "shape": "rect",
+        "widthMm": 1.905,
+        "heightMm": 2,
+        "drillMm": 1.1
+      },
+      {
+        "number": "2",
+        "at": {
+          "x": 0,
+          "y": 0
+        },
+        "shape": "oval",
+        "widthMm": 1.905,
+        "heightMm": 2,
+        "drillMm": 1.1
+      },
+      {
+        "number": "3",
+        "at": {
+          "x": 2.54,
+          "y": 0
+        },
+        "shape": "oval",
+        "widthMm": 1.905,
+        "heightMm": 2,
+        "drillMm": 1.1
+      }
+    ],
+    "outline": [
+      [
+        {
+          "x": -5,
+          "y": -3.15
+        },
+        {
+          "x": 5,
+          "y": -3.15
+        },
+        {
+          "x": 5,
+          "y": 1.25
+        },
+        {
+          "x": -5,
+          "y": 1.25
+        },
+        {
+          "x": -5,
+          "y": -3.15
+        }
+      ],
+      [
+        {
+          "x": -5,
+          "y": -1.88
+        },
+        {
+          "x": 5,
+          "y": -1.88
+        }
+      ]
+    ]
+  }
+}

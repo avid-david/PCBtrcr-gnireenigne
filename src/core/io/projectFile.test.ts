@@ -11,6 +11,9 @@ import {
   thPad,
   trace,
   via,
+  plane,
+  square,
+  twoPadComponent,
   withFeatures,
 } from '../model/features.test-support';
 import { createProject, type Project } from '../model/project';
@@ -48,6 +51,36 @@ describe('project file round trip', () => {
     trace: [
       via('v1', { x: 0, y: 0 }),
       trace('t1', [bound('a', 'v1'), free('b', { x: 4.25, y: -1.5 })]),
+    ],
+    component: [
+      twoPadComponent('r1', { x: 5, y: 5 }, { rotationDeg: 90 }),
+      twoPadComponent('r2', { x: 9, y: 5 }, { layerId: 'bottom', flipped: true, drillMm: 0.8 }),
+    ],
+    plane: [via('v1', { x: 1, y: 1 }), plane('g', square(0, 0, 4), ['v1'])],
+    text: [
+      {
+        kind: 'text',
+        id: 'n',
+        layerId: 'top',
+        at: { x: 1, y: 2 },
+        text: 'check C4 later',
+        heightMm: 1.5,
+      },
+    ],
+    silkLine: [
+      {
+        kind: 'silkLine',
+        id: 's',
+        layerId: 'bottom',
+        points: [
+          { x: 0, y: 0 },
+          { x: 3, y: 1 },
+        ],
+        widthMm: 0.15,
+      },
+    ],
+    silkText: [
+      { kind: 'silkText', id: 'st', layerId: 'top', at: { x: 0, y: 0 }, text: 'R1', heightMm: 1 },
     ],
   };
 
@@ -152,6 +185,26 @@ describe('loading a damaged or foreign file', () => {
     expect(errorOf(roundTrip(project))).toMatchObject({ kind: 'broken-reference' });
   });
 
+  it.each([
+    ['a plane attached to a missing anchor', [plane('g', square(0, 0, 4), ['gone'])]],
+    [
+      'an id used twice',
+      [via('v', { x: 0, y: 0 }), twoPadComponent('c', { x: 0, y: 0 }), via('c.1', { x: 1, y: 1 })],
+    ],
+    ['a feature on a missing layer', [twoPadComponent('c', { x: 0, y: 0 }, { layerId: 'inner' })]],
+  ])('rejects %s', (_name, features) => {
+    expect(errorOf(roundTrip(withFeatures(features)))).toMatchObject({ kind: 'broken-reference' });
+  });
+
+  it('rejects a component with two pads of the same number', () => {
+    const c = twoPadComponent('c', { x: 0, y: 0 });
+    const twin = { ...c, pads: c.pads.map((p) => ({ ...p, number: '1' })) };
+    expect(errorOf(roundTrip(withFeatures([twin])))).toMatchObject({
+      kind: 'invalid',
+      path: 'project.features.0.pads',
+    });
+  });
+
   it('rejects a matched point on a missing layer', () => {
     const project: Project = {
       ...createProject(),
@@ -176,9 +229,10 @@ describe('loading a damaged or foreign file', () => {
 });
 
 describe('migrations', () => {
-  it('has none yet: version 1 is the first format', () => {
-    expect(MIGRATIONS).toHaveLength(0);
-    expect(migrate({ a: 1 }, 1)).toEqual({ a: 1 });
+  it('upgrades version 1 by renumbering it: version 2 only adds feature kinds', () => {
+    expect(MIGRATIONS).toHaveLength(CURRENT_SCHEMA_VERSION - 1);
+    expect(migrate({ schemaVersion: 1, a: 1 }, 1)).toEqual({ schemaVersion: 2, a: 1 });
+    expect(migrate({ schemaVersion: 2 }, 2)).toEqual({ schemaVersion: 2 });
   });
 
   it('applies the steps after the file version, in order', () => {
@@ -186,5 +240,18 @@ describe('migrations', () => {
     expect(migrate('v1', 1, steps)).toBe('v1>2>3');
     expect(migrate('v2', 2, steps)).toBe('v2>3');
     expect(migrate('v3', 3, steps)).toBe('v3');
+  });
+});
+
+describe('canonical file text', () => {
+  it('writes the same text however the keys of a feature were ordered', () => {
+    const v = via('v1', { x: 1, y: 2 });
+    const reordered = { padMm: v.padMm, drillMm: v.drillMm, at: v.at, id: v.id, kind: v.kind };
+    expect(serializeProject(withFeatures([reordered]))).toBe(serializeProject(withFeatures([v])));
+  });
+
+  it('still writes a project the schema would refuse, rather than lose it', () => {
+    const broken = withFeatures([{ ...via('v1', { x: 0, y: 0 }), padMm: -1 }]);
+    expect(serializeProject(broken)).toContain('"padMm": -1');
   });
 });

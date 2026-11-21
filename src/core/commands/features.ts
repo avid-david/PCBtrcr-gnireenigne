@@ -39,6 +39,14 @@ function unbind(project: Project, removed: ReadonlySet<AnchorId>, v: TraceVertex
   return at === null ? v : { id: v.id, kind: 'free', at };
 }
 
+/** Ties into removed anchors are released: trace vertices are freed, plane attachments dropped. */
+function releaseRemoved(project: Project, removed: ReadonlySet<AnchorId>, f: Feature): Feature {
+  if (f.kind === 'trace') {
+    return { ...f, vertices: f.vertices.map((v) => unbind(project, removed, v)) };
+  }
+  return f.kind === 'plane' ? { ...f, attached: f.attached.filter((id) => !removed.has(id)) } : f;
+}
+
 /** Deletes features; trace vertices tied to their anchors are freed in place. */
 export const removeFeatures = (ids: readonly FeatureId[]): Command => ({
   label: ids.length === 1 ? 'Delete feature' : `Delete ${String(ids.length)} features`,
@@ -52,11 +60,7 @@ export const removeFeatures = (ids: readonly FeatureId[]): Command => ({
     );
     const kept = project.features
       .filter((f) => !gone.has(f.id))
-      .map((f) =>
-        f.kind === 'trace'
-          ? { ...f, vertices: f.vertices.map((v) => unbind(project, removedAnchors, v)) }
-          : f,
-      );
+      .map((f) => releaseRemoved(project, removedAnchors, f));
     return replaceFeatures(project, kept);
   },
 });

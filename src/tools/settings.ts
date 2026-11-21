@@ -1,4 +1,8 @@
+import type { Params } from '../core/footprints/footprint';
+import { defaultParams, findFamily } from '../core/footprints/library';
 import type { Feature, PadShape } from '../core/model/features';
+
+export type SilkMode = 'line' | 'text';
 
 /**
  * Sizes for newly placed features and snapping options. The last value the user chose
@@ -17,6 +21,20 @@ export interface ToolSettings {
   readonly point: { readonly diameterMm: number };
   readonly hole: { readonly diameterMm: number; readonly plated: boolean };
   readonly grid: { readonly enabled: boolean; readonly stepMm: number };
+  /** Footprint the component tool places next, and the designator prefix and value it gets. */
+  readonly component: {
+    readonly familyId: string;
+    readonly params: Params;
+    readonly prefix: string;
+    readonly value: string;
+  };
+  readonly text: { readonly text: string; readonly heightMm: number };
+  readonly silk: {
+    readonly mode: SilkMode;
+    readonly widthMm: number;
+    readonly text: string;
+    readonly heightMm: number;
+  };
 }
 
 /** Takes a feature's sizes as the new defaults for its kind ("last value used becomes default"). */
@@ -40,11 +58,20 @@ const remember: {
       drillMm: f.drillMm,
     },
   }),
+  component: (s) => s,
+  plane: (s) => s,
+  text: (s, f) => ({ ...s, text: { text: f.text, heightMm: f.heightMm } }),
+  silkLine: (s, f) => ({ ...s, silk: { ...s.silk, widthMm: f.widthMm } }),
+  silkText: (s, f) => ({ ...s, silk: { ...s.silk, text: f.text, heightMm: f.heightMm } }),
 };
 
 /** Settings with the feature's sizes as the defaults for the next feature of its kind. */
 export const rememberDefaults = (settings: ToolSettings, feature: Feature): ToolSettings =>
   (remember[feature.kind] as (s: ToolSettings, f: Feature) => ToolSettings)(settings, feature);
+
+const CHIP = 'chip';
+const chipFamily = findFamily(CHIP);
+const chipDefaults = chipFamily === undefined ? {} : defaultParams(chipFamily);
 
 export const DEFAULT_SETTINGS: ToolSettings = {
   trace: { widthMm: 0.25 },
@@ -53,4 +80,7 @@ export const DEFAULT_SETTINGS: ToolSettings = {
   point: { diameterMm: 0.8 },
   hole: { diameterMm: 1, plated: false },
   grid: { enabled: false, stepMm: 0.5 },
+  component: { familyId: CHIP, params: chipDefaults, prefix: 'R', value: '' },
+  text: { text: 'Note', heightMm: 1.5 },
+  silk: { mode: 'line', widthMm: 0.15, text: 'TEXT', heightMm: 1 },
 };

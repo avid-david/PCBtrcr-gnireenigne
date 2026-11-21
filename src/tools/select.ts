@@ -1,3 +1,4 @@
+import { flipComponents, oppositeLayer, rotateComponents } from '../core/commands/components';
 import { moveFeatures, removeFeatures } from '../core/commands/features';
 import { distance, rectBetween } from '../core/geometry/distance';
 import { sub, type Vec2 } from '../core/geometry/vec2';
@@ -38,14 +39,22 @@ const IDLE: SelectState = { mode: 'idle' };
 const editable = (f: Feature, ctx: ToolContext): boolean => featureOnLayer(f, ctx.activeLayerId);
 
 /**
- * The editable feature under the cursor. Pads, vias, points and holes win over traces, whose
- * ends usually lie on them; otherwise the topmost (latest) feature wins.
+ * Which hit wins, matching how features are drawn: planes lie under everything, traces over
+ * planes, and pads, vias, components and text on top (a trace's ends usually lie on them).
  */
+const HIT_RANK: Partial<Readonly<Record<Feature['kind'], number>>> = { plane: 0, trace: 1 };
+const TOP_RANK = 2;
+const rankOf = (f: Feature) => HIT_RANK[f.kind] ?? TOP_RANK;
+
+/** The editable feature under the cursor: the highest rank, and the latest within it. */
 function hitFeature(ctx: ToolContext, at: Vec2, radiusMm: number): Feature | null {
   const hits = ctx.project.features.filter(
     (f) => editable(f, ctx) && featureDistance(f, at, ctx.project) <= radiusMm,
   );
-  return hits.filter((f) => f.kind !== 'trace').at(-1) ?? hits.at(-1) ?? null;
+  return hits.reduce<Feature | null>(
+    (best, f) => (best === null || rankOf(f) >= rankOf(best) ? f : best),
+    null,
+  );
 }
 
 const toggle = (ids: readonly FeatureId[], id: FeatureId): FeatureId[] =>
@@ -110,19 +119,47 @@ function onPointerUp(s: SelectState, ctx: ToolContext): ToolResult<SelectState> 
   return stateOnly(IDLE);
 }
 
+const selectedComponents = (ctx: ToolContext): FeatureId[] =>
+  ctx.project.features
+    .filter((f) => f.kind === 'component' && ctx.selection.includes(f.id))
+    .map((f) => f.id);
+
+/** Applies a command to the selection, or does nothing when nothing fitting is selected. */
+const onSelection =
+  (
+    ids: (ctx: ToolContext) => readonly FeatureId[],
+    result: (ids: readonly FeatureId[], ctx: ToolContext) => ToolResult<SelectState>,
+  ) =>
+  (ctx: ToolContext): ToolResult<SelectState> | null => {
+    const chosen = ids(ctx);
+    return chosen.length === 0 ? null : result(chosen, ctx);
+  };
+
+const remove = onSelection(
+  (ctx) => ctx.selection,
+  (ids) => ({ state: IDLE, commands: [removeFeatures(ids)], selection: [], activateLayer: null }),
+);
+
+const selectKeys: Readonly<Record<string, (ctx: ToolContext) => ToolResult<SelectState> | null>> = {
+  Delete: remove,
+  Backspace: remove,
+  r: onSelection(selectedComponents, (ids) => ({
+    ...stateOnly<SelectState>(IDLE),
+    commands: [rotateComponents(ids, 90)],
+  })),
+  // The flipped parts move to the other side, so that side becomes active to keep them in view.
+  f: onSelection(selectedComponents, (ids, ctx) => ({
+    ...stateOnly<SelectState>(IDLE),
+    commands: [flipComponents(ids)],
+    activateLayer: oppositeLayer(ctx.project, ctx.activeLayerId),
+  })),
+};
+
 const handlers: ToolHandlers<SelectState> = {
   pointerdown: (_s, e, ctx) => onPointerDown(ctx, e.board, e),
   pointermove: (s, e, ctx) => onPointerMove(s, e, ctx),
   pointerup: (s, _e, ctx) => onPointerUp(s, ctx),
-  key: (s, e, ctx) =>
-    (e.key === 'Delete' || e.key === 'Backspace') && ctx.selection.length > 0
-      ? {
-          state: IDLE,
-          commands: [removeFeatures(ctx.selection)],
-          selection: [],
-          activateLayer: null,
-        }
-      : stateOnly(s),
+  key: (s, e, ctx) => selectKeys[e.key]?.(ctx) ?? stateOnly(s),
   cancel: () => stateOnly(IDLE),
 };
 
@@ -134,7 +171,7 @@ export const selectTool: Tool<SelectState> = {
   initial: IDLE,
   step: handle(handlers),
   hint: () =>
-    'Click to select (Shift adds), drag to move, drag on empty board to box-select, Delete removes.',
+    'Click to select (Shift adds), drag to move, drag on empty board to box-select, Delete removes, R rotates and F flips components.',
   preview: (state: SelectState, project: Project) =>
     state.mode === 'moving' ? moveFeatures(state.ids, state.delta).execute(project) : project,
   overlay: (state) => ({
