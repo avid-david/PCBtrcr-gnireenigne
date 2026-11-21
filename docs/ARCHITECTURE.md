@@ -4,7 +4,8 @@ PCB Reverse Tracer is a browser app (Vite + React + TypeScript). Rendering uses 
 `Renderer` interface. The rules behind this document are in [CLAUDE.md](../CLAUDE.md); the stack decision
 is [ADR 0001](adr/0001-stack.md), coordinates are in [ADR 0002](adr/0002-coordinates-and-transforms.md),
 photo display in [ADR 0003](adr/0003-image-display.md), alignment in [ADR 0004](adr/0004-alignment.md)
-and features, connectivity, undo and tools in [ADR 0005](adr/0005-features-connectivity-undo.md).
+features, connectivity, undo and tools in [ADR 0005](adr/0005-features-connectivity-undo.md), and
+the project file and autosave in [ADR 0006](adr/0006-project-file-and-autosave.md).
 
 ## Layers
 
@@ -22,12 +23,12 @@ Dependencies point inward. Arrows mean "may import".
 
 | Folder | Contents | May import | Exists since |
 | --- | --- | --- | --- |
-| `src/core/` | Pure domain logic: geometry, model (incl. copper features), alignment, connectivity, view, commands and undo history (later footprints, io). No DOM, React, PixiJS or browser APIs. | nothing outside `core` | M0 |
+| `src/core/` | Pure domain logic: geometry, model (incl. copper features), alignment, connectivity, view, commands and undo history, io (project file format, versions, migrations, zip archive); later footprints. No DOM, React, PixiJS or browser APIs. | nothing outside `core` | M0 |
 | `src/tools/` | Interaction state machines: pan/zoom navigation, and the registered editing tools (select, trace, via, pad, point, hole, align) with snapping. They return commands, never mutate. | `core` | M1 |
 | `src/render/` | `buildScene` (state → what to draw, incl. outline and alignment markers), the `Renderer` interface and its PixiJS implementation. Reads state, never mutates it. | `core`, `tools` (not `ui`) | M1 |
 | `src/ui/` | React components and the Zustand editor store. Thin: dispatch commands, show state, turn DOM events into tool inputs. | `core`, `tools` (not `render`) | M0 |
-| `src/platform/` | File access and image decoding (later storage, clipboard); browser vs desktop adapters. | `core` | M1 |
-| `src/app/` | Composition root: creates the store, image registry and renderer and wires them together. Nothing imports it. | everything | M0 |
+| `src/platform/` | Image decoding, file download, key-value storage (IndexedDB) for autosave (later clipboard); browser vs desktop adapters. | `core` | M1 |
+| `src/app/` | Composition root: creates the store, image registry and renderer and wires them together; open/save (`projectFiles`), autosave and recovery (`autosave`, `persistence`). Nothing imports it. | everything | M0 |
 
 ## Data flow
 
@@ -41,6 +42,11 @@ pointer / wheel / keys ─► ui (DOM events) ─► tools/navigation ─► sto
                                    └─► active tool (tools/registry) ─► commands, selection, layer ─► store
                                                                           │
                                          core/commands/history ◄──────────┘ (one undo step each)
+
+Open… ─► platform (file bytes) ─► app/projectFiles ─► core/io (unzip, parse, migrate, validate)
+                                        └─► loader (photos, same ids) ─► registry; store.loadProject
+Save  ─► app/projectFiles ─► core/io (serialize + zip with original photo bytes) ─► platform download
+store change ─► app/autosave (1 s after the last change) ─► platform key-value store (IndexedDB)
 
 store change ─► app/boardController (at most once per frame) ─► render/buildScene ─► Renderer.render
                                                                   │
@@ -56,8 +62,11 @@ store change ─► app/boardController (at most once per frame) ─► render/b
   tool drags something (features, an alignment point), canvas and panel show the tool's `preview`.
 - **View state** (`core/view`): active layer, viewport, overlay opacity, hidden photos. Looking at the
   board is not an edit, so view changes are not commands and are not saved with the project.
-- **Pixels**: decoded photo tiles live in the app's image registry, keyed by image id, outside the
-  model, for as long as the project or its undo history refers to them.
+- **Pixels**: decoded photo tiles and the original file bytes live in the app's image registry, keyed
+  by image id, outside the model, for as long as the project or its undo history refers to them.
+- **Project file** (`core/io`): a `.pcbrt` zip with `project.json` (`schemaVersion` + project) and the
+  original photos. Loading migrates older versions, validates with zod and checks references; a
+  newer version is refused. The store remembers the last saved project to show unsaved changes.
 
 ## How the rules are enforced
 
@@ -91,7 +100,7 @@ store change ─► app/boardController (at most once per frame) ─► render/b
 
 Property tests use a fixed fast-check seed (`vitest.setup.ts`); run `FC_SEED=<n> pnpm test` to explore
 other cases. Files that need a real browser (`src/render/pixi/**`, `src/platform/browserImage.ts`,
-`src/app/main.tsx`) are excluded from unit coverage and covered by the e2e tests.
+`src/platform/download.ts`, `src/platform/keyValueStore.ts`, `src/app/main.tsx`) are excluded from unit coverage and covered by the e2e tests.
 
 ## Tooling layout
 
