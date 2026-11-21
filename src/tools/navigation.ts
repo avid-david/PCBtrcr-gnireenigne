@@ -13,7 +13,7 @@ export type NavigationState =
 export type NavigationEvent =
   | { readonly type: 'pointerdown'; readonly button: number; readonly point: Vec2 }
   | { readonly type: 'pointermove'; readonly point: Vec2 }
-  | { readonly type: 'pointerup' }
+  | { readonly type: 'pointerup'; readonly point?: Vec2 }
   | { readonly type: 'wheel'; readonly point: Vec2; readonly deltaPx: number }
   | { readonly type: 'spacedown' }
   | { readonly type: 'spaceup' };

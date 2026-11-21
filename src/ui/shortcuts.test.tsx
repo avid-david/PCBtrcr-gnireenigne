@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render } from '@testing-library/react';
+import { alignState } from './editorTransitions';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runShortcut, useShortcuts } from './shortcuts';
+import { comboOf, runShortcut, useShortcuts } from './shortcuts';
 import { EditorStoreContext, createEditorStore, useEditorStore } from './store';
 
 afterEach(cleanup);
@@ -18,21 +19,63 @@ describe('shortcuts', () => {
   it('A toggles align mode, but not while typing in a text field', () => {
     const store = createEditorStore();
     expect(runShortcut(store, 'a')).toBe(true);
-    expect(store.getState().align).not.toBeNull();
-    expect(runShortcut(store, 'A', true)).toBe(false);
-    expect(store.getState().align).not.toBeNull();
-    expect(runShortcut(store, 'A')).toBe(true);
-    expect(store.getState().align).toBeNull();
+    expect(store.getState().tool.id).toBe('align');
+    expect(runShortcut(store, 'a', true)).toBe(false);
+    expect(store.getState().tool.id).toBe('align');
+    expect(runShortcut(store, 'a')).toBe(true);
+    expect(store.getState().tool.id).toBe('select');
+  });
+
+  it('names key combinations with Ctrl and Shift, ignoring Alt', () => {
+    const key = (
+      k: string,
+      mods: Partial<Record<'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey', boolean>> = {},
+    ) =>
+      comboOf({ key: k, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...mods });
+    expect(key('T', { shiftKey: true })).toBe('t');
+    expect(key('Z', { ctrlKey: true, shiftKey: true })).toBe('Ctrl+Shift+z');
+    expect(key('y', { metaKey: true })).toBe('Ctrl+y');
+    expect(key('Tab')).toBe('Tab');
+    expect(key('a', { altKey: true })).toBeNull();
+  });
+
+  it('selects tools, toggles the grid, and undoes/redoes', () => {
+    const store = createEditorStore({ newId: () => 'v1' });
+    runShortcut(store, 'v');
+    expect(store.getState().tool.id).toBe('via');
+    store
+      .getState()
+      .sendTool({ type: 'pointerdown', board: { x: 1, y: 1 }, hitRadiusMm: 1, shift: false });
+    expect(store.getState().project.features).toHaveLength(1);
+    runShortcut(store, 'Ctrl+z');
+    expect(store.getState().project.features).toHaveLength(0);
+    runShortcut(store, 'Ctrl+y');
+    expect(store.getState().project.features).toHaveLength(1);
+    runShortcut(store, 'Ctrl+z');
+    runShortcut(store, 'Ctrl+Shift+z');
+    expect(store.getState().project.features).toHaveLength(1);
+    runShortcut(store, 'g');
+    expect(store.getState().settings.grid.enabled).toBe(true);
+    runShortcut(store, 's');
+    store.getState().setSelection(['v1']);
+    runShortcut(store, 'Delete');
+    expect(store.getState().project.features).toHaveLength(0);
+    runShortcut(store, 'Enter');
+    runShortcut(store, 'Backspace');
+    runShortcut(store, 'Home');
   });
 
   it('Escape cancels a pending match click, also while typing', () => {
     const store = createEditorStore();
-    store.getState().setAligning(true);
+    store.getState().setTool('align');
     store.setState({
-      align: { mode: 'matches', pending: { layerId: 'top', px: { x: 1, y: 1 } }, drag: null },
+      tool: {
+        id: 'align',
+        state: { mode: 'matches', pending: { layerId: 'top', px: { x: 1, y: 1 } }, drag: null },
+      },
     });
     expect(runShortcut(store, 'Escape', true)).toBe(true);
-    expect(store.getState().align?.pending).toBeNull();
+    expect(alignState(store.getState())?.pending).toBeNull();
   });
 
   it('only treats text inputs as typing (not checkboxes or sliders)', () => {
@@ -46,9 +89,9 @@ describe('shortcuts', () => {
     );
     const [text, box] = Array.from(container.querySelectorAll('input'));
     fireEvent.keyDown(text ?? window, { key: 'a' });
-    expect(store.getState().align).toBeNull();
+    expect(store.getState().tool.id).not.toBe('align');
     fireEvent.keyDown(box ?? window, { key: 'a' });
-    expect(store.getState().align).not.toBeNull();
+    expect(store.getState().tool.id).toBe('align');
   });
 });
 

@@ -1,5 +1,6 @@
 import type { ChangeEvent } from 'react';
 import type { Layer, LayerId } from '../core/model/project';
+import { redoLabel, undoLabel } from '../core/commands/history';
 import { fitToView, setActiveLayer } from '../core/view/viewState';
 import { useEditor, useEditorStore } from './store';
 
@@ -67,25 +68,37 @@ function NewProjectButton() {
   );
 }
 
-function AlignButton() {
+function UndoRedo() {
   const store = useEditorStore();
-  const aligning = useEditor((s) => s.align !== null);
+  const undoText = useEditor((s) => undoLabel(s.history));
+  const redoText = useEditor((s) => redoLabel(s.history));
   return (
-    <button
-      type="button"
-      className="button"
-      aria-pressed={aligning}
-      title="Align photos (A)"
-      onClick={() => {
-        store.getState().setAligning(!aligning);
-      }}
-    >
-      Align
-    </button>
+    <div className="segmented" role="group" aria-label="History">
+      <button
+        type="button"
+        disabled={undoText === null}
+        title={undoText === null ? 'Nothing to undo' : `Undo ${undoText} (Ctrl+Z)`}
+        onClick={() => {
+          store.getState().undo();
+        }}
+      >
+        Undo
+      </button>
+      <button
+        type="button"
+        disabled={redoText === null}
+        title={redoText === null ? 'Nothing to redo' : `Redo ${redoText} (Ctrl+Y)`}
+        onClick={() => {
+          store.getState().redo();
+        }}
+      >
+        Redo
+      </button>
+    </div>
   );
 }
 
-/** Top bar: project and import actions, active layer switch, align mode and fit-to-view. */
+/** Top bar: project and import actions, undo/redo, active layer switch and fit-to-view. */
 export function Header({ appName, onImportPhoto }: HeaderProps) {
   const store = useEditorStore();
   const layers = useEditor((s) => s.project.layers);
@@ -96,8 +109,8 @@ export function Header({ appName, onImportPhoto }: HeaderProps) {
       {layers.map((layer) => (
         <ImportButton key={layer.id} layer={layer} onImportPhoto={onImportPhoto} />
       ))}
+      <UndoRedo />
       <LayerSwitch />
-      <AlignButton />
       <button
         type="button"
         className="button"

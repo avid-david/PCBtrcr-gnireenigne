@@ -12,6 +12,7 @@ const MARKER_COLORS: Readonly<Record<MarkerStatus, number>> = {
   pending: 0x58a6ff,
 };
 const OUTLINE_COLOR = 0xf0f6fc;
+const SELECTION_COLOR = 0xffffff;
 const MARKER_RADIUS = 7;
 const LABEL_STYLE = { fontFamily: 'system-ui, sans-serif', fontSize: 12, fill: 0xffffff } as const;
 
@@ -31,10 +32,24 @@ export class OverlayLayer {
   draw(scene: Scene): void {
     this.graphics.clear();
     this.drawOutline(scene.outline, scene.viewport);
+    this.drawSelection(scene.selection, scene.viewport);
     scene.markers.forEach((marker) => {
       this.drawMarker(marker, scene.viewport);
     });
     this.updateLabels(scene.markers, scene.viewport);
+  }
+
+  /** A dashed-looking double frame around each selected feature, constant on screen. */
+  private drawSelection(boxes: Scene['selection'], viewport: Viewport): void {
+    for (const box of boxes) {
+      const a = boardToScreen(viewport, { x: box.minX, y: box.minY });
+      const b = boardToScreen(viewport, { x: box.maxX, y: box.maxY });
+      this.graphics
+        .rect(a.x - 3, a.y - 3, b.x - a.x + 6, b.y - a.y + 6)
+        .stroke({ width: 3, color: 0x000000, alpha: 0.6 })
+        .rect(a.x - 3, a.y - 3, b.x - a.x + 6, b.y - a.y + 6)
+        .stroke({ width: 1.5, color: SELECTION_COLOR });
+    }
   }
 
   private drawOutline(outline: Scene['outline'], viewport: Viewport): void {

@@ -76,14 +76,20 @@ describe('Header', () => {
   });
 });
 
-describe('Header align button', () => {
-  it('toggles align mode and shows its state', () => {
+describe('Header undo and redo', () => {
+  it('are disabled until there is something to undo, and name the step', () => {
     const { store } = renderHeader();
-    const button = screen.getByRole('button', { name: 'Align' });
-    fireEvent.click(button);
-    expect(store.getState().align).not.toBeNull();
-    expect(button.getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(button);
-    expect(store.getState().align).toBeNull();
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    const redo = screen.getByRole('button', { name: 'Redo' });
+    expect((undo as HTMLButtonElement).disabled).toBe(true);
+    act(() => {
+      store.getState().dispatch(setLayerImage('top', image));
+    });
+    expect(undo.getAttribute('title')).toBe('Undo Import top.png (Ctrl+Z)');
+    fireEvent.click(undo);
+    expect(store.getState().project.layers[0]?.image).toBeNull();
+    expect(redo.getAttribute('title')).toBe('Redo Import top.png (Ctrl+Y)');
+    fireEvent.click(redo);
+    expect(store.getState().project.layers[0]?.image).toBe(image);
   });
 });

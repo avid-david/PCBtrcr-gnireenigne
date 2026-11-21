@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { alignState } from './editorTransitions';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   FEATURES,
@@ -15,7 +16,7 @@ import { parseMillimetres } from './units';
 
 function renderPanel(project: Project = createProject()) {
   const store = createEditorStore({ project, newId: () => 'id' });
-  store.getState().setAligning(true);
+  store.getState().setTool('align');
   render(
     <EditorStoreContext value={store}>
       <AlignPanel />
@@ -43,7 +44,7 @@ describe('AlignPanel', () => {
   it('switches between corners and matching points', () => {
     const store = renderPanel(alignedTopProject());
     fireEvent.click(screen.getByRole('button', { name: 'Matching points' }));
-    expect(store.getState().align?.mode).toBe('matches');
+    expect(alignState(store.getState())?.mode).toBe('matches');
     expect(
       screen.getByRole('button', { name: 'Matching points' }).getAttribute('aria-pressed'),
     ).toBe('true');
