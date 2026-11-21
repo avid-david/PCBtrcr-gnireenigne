@@ -1,8 +1,8 @@
 import type { Vec2 } from '../geometry/vec2';
 import type { Feature } from './features';
+import type { LayerId } from './ids';
 
-/** Identifier of a layer. A list, not fixed fields, so 4-layer boards can be added later. */
-export type LayerId = string;
+export type { LayerId } from './ids';
 
 /** Copper side a layer belongs to, as seen from the top of the board. */
 export type LayerSide = 'top' | 'bottom';

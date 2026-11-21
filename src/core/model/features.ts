@@ -1,5 +1,5 @@
 import type { Vec2 } from '../geometry/vec2';
-import type { LayerId } from './project';
+import type { LayerId } from './ids';
 
 // Copper features drawn by the user (SPEC F3). Positions are in board mm. Features are plain
 // data; their behaviour (anchors, bounds, hit-testing, moving) is registered per kind in
