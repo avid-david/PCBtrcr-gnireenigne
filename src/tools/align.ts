@@ -1,7 +1,7 @@
 import { boardToImage, imageToBoard } from '../core/alignment/alignment';
 import { addMatch, placePoint, type Command } from '../core/commands/command';
 import type { Vec2 } from '../core/geometry/vec2';
-import { movePoint, pointsOnLayer, type PointRef } from '../core/model/points';
+import { getPoint, movePoint, pointsOnLayer, type PointRef } from '../core/model/points';
 import { CORNERS, type Corner, type LayerId, type Project } from '../core/model/project';
 
 /**
@@ -151,6 +151,24 @@ export function alignStep(state: AlignState, event: AlignEvent, ctx: AlignContex
     setMode: (e) => result({ ...state, mode: e.mode, pending: null }),
   };
   return (handlers[event.type] as (e: AlignEvent) => AlignResult)(event);
+}
+
+const photoOf = (project: Project, layerId: LayerId) =>
+  project.layers.find((l) => l.id === layerId)?.image ?? null;
+
+/**
+ * Drops transient align state that no longer fits the project after an edit: a pending match
+ * click or a drag refers to pixels of one photo, so it is void once that photo is replaced, and
+ * a drag is void once its point is deleted. Returns the same object when nothing changes.
+ */
+export function reconcileAlign(state: AlignState, before: Project, after: Project): AlignState {
+  const samePhoto = (layerId: LayerId) => photoOf(before, layerId) === photoOf(after, layerId);
+  const pending = state.pending !== null && samePhoto(state.pending.layerId) ? state.pending : null;
+  const drag =
+    state.drag !== null && samePhoto(state.drag.ref.layerId) && getPoint(after, state.drag.ref)
+      ? state.drag
+      : null;
+  return pending === state.pending && drag === state.drag ? state : { ...state, pending, drag };
 }
 
 const previews = new WeakMap<AlignState, { readonly from: Project; readonly preview: Project }>();

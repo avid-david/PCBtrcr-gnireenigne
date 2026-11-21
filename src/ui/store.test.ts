@@ -60,3 +60,19 @@ describe('editor store align mode', () => {
     expect(store.getState().align).toBeNull();
   });
 });
+
+describe('editor store and replaced photos', () => {
+  it('re-importing a photo cancels a half-made match on it', () => {
+    const store = createEditorStore();
+    store.getState().dispatch(setLayerImage('top', image));
+    store.getState().setAligning(true);
+    store.setState({
+      align: { mode: 'matches', pending: { layerId: 'top', px: { x: 1, y: 1 } }, drag: null },
+    });
+    store.getState().dispatch(setLayerImage('top', { ...image, id: 'replacement' }));
+    expect(store.getState().align?.pending).toBeNull();
+    store.getState().setAligning(false);
+    store.getState().dispatch(setLayerImage('top', image));
+    expect(store.getState().align).toBeNull();
+  });
+});

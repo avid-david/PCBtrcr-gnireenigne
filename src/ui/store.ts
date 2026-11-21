@@ -4,7 +4,13 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { Command } from '../core/commands/command';
 import { createProject, type Project } from '../core/model/project';
 import { createViewState, setActiveLayer, type ViewState } from '../core/view/viewState';
-import { INITIAL_ALIGN, alignStep, type AlignEvent, type AlignState } from '../tools/align';
+import {
+  INITIAL_ALIGN,
+  alignStep,
+  reconcileAlign,
+  type AlignEvent,
+  type AlignState,
+} from '../tools/align';
 
 /** Editor state: the project (edited only via commands) and how it is being viewed. */
 export interface EditorState {
@@ -50,6 +56,12 @@ function stepAlign(
   return { align: state, project, view };
 }
 
+/** Executes a command; align-mode state tied to a replaced photo or deleted point is dropped. */
+function applyCommand(s: EditorState, command: Command): Partial<EditorState> {
+  const project = command.execute(s.project);
+  return { project, align: s.align === null ? null : reconcileAlign(s.align, s.project, project) };
+}
+
 /** State after "New project": everything reset except the screen size. */
 function freshProjectState(s: EditorState): Partial<EditorState> {
   const fresh = createProject();
@@ -73,7 +85,7 @@ export function createEditorStore(options: EditorStoreOptions = {}): EditorStore
     notice: null,
     projectGeneration: 0,
     dispatch: (command) => {
-      set((s) => ({ project: command.execute(s.project) }));
+      set((s) => applyCommand(s, command));
     },
     updateView: (update) => {
       set((s) => ({ view: update(s.view, s.project) }));

@@ -11,12 +11,13 @@ import {
 import { closeTo } from '../core/geometry/arbitraries.test-support';
 import { getPoint } from '../core/model/points';
 import { cornerPosition, createProject, type Project } from '../core/model/project';
-import { setBoardSize, setLayerImage } from '../core/commands/command';
+import { deletePoint, setBoardSize, setLayerImage } from '../core/commands/command';
 import {
   INITIAL_ALIGN,
   alignStep,
   nextCorner,
   previewProject,
+  reconcileAlign,
   type AlignEvent,
   type AlignState,
 } from './align';
@@ -208,5 +209,47 @@ describe('previewProject', () => {
     expect(previewProject(alignedTopProject(), moved.state)).not.toBe(
       previewProject(project, moved.state),
     );
+  });
+});
+
+describe('reconcileAlign', () => {
+  const pendingOnTop: AlignState = {
+    ...INITIAL_ALIGN,
+    mode: 'matches',
+    pending: { layerId: 'top', px: { x: 1, y: 1 } },
+  };
+
+  it('keeps state that still fits and returns the same object', () => {
+    const project = alignedTopProject();
+    const other = setLayerImage('bottom', photo('b2')).execute(project);
+    expect(reconcileAlign(pendingOnTop, project, other)).toBe(pendingOnTop);
+    expect(reconcileAlign(INITIAL_ALIGN, project, other)).toBe(INITIAL_ALIGN);
+  });
+
+  it('drops a pending match click when its photo is replaced', () => {
+    const project = alignedTopProject();
+    const replaced = setLayerImage('top', photo('t2')).execute(project);
+    expect(reconcileAlign(pendingOnTop, project, replaced)).toEqual({
+      ...pendingOnTop,
+      pending: null,
+    });
+  });
+
+  it('drops a drag whose point was deleted or whose photo was replaced', () => {
+    const project = alignedTopProject();
+    const ctx = { project, activeLayerId: 'top', newId: () => 'x' };
+    const grabbed = alignStep(INITIAL_ALIGN, down(cornerPosition(board, 'tl')), ctx).state;
+    const ref = { kind: 'corner', layerId: 'top', corner: 'tl' } as const;
+    expect(reconcileAlign(grabbed, project, deletePoint(ref).execute(project)).drag).toBeNull();
+    expect(
+      reconcileAlign(grabbed, project, setLayerImage('top', photo('t2')).execute(project)).drag,
+    ).toBeNull();
+    expect(
+      reconcileAlign(
+        grabbed,
+        project,
+        setBoardSize({ widthMm: 90, heightMm: 50 }).execute(project),
+      ),
+    ).toBe(grabbed);
   });
 });
