@@ -1,5 +1,5 @@
 import type { Vec2 } from '../geometry/vec2';
-import type { Feature } from './features';
+import type { AnchorId, Feature } from './features';
 import type { LayerId } from './ids';
 
 export type { LayerId } from './ids';
@@ -58,6 +58,21 @@ export interface Project {
   readonly matches: readonly PointMatch[];
   /** Copper features in drawing order (older first). */
   readonly features: readonly Feature[];
+  /** Names, colours and locks the user gave nets (docs/adr/0008). Nets themselves are derived. */
+  readonly netStyles: readonly NetStyle[];
+}
+
+/**
+ * What the user set for a net, stored against one member anchor so it follows the net through
+ * edits. `null` keeps the automatic name or colour.
+ */
+export interface NetStyle {
+  readonly anchor: AnchorId;
+  readonly name: string | null;
+  /** 0xRRGGBB. */
+  readonly color: number | null;
+  /** A locked net's features cannot be selected, moved or deleted. */
+  readonly locked: boolean;
 }
 
 export const TOP_LAYER_ID: LayerId = 'top';
@@ -80,6 +95,7 @@ export function createProject(): Project {
     ],
     matches: [],
     features: [],
+    netStyles: [],
   };
 }
 

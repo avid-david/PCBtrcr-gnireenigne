@@ -1,5 +1,7 @@
 import type { Command } from '../core/commands/command';
 import { execute, redo, undo, type History, type Step } from '../core/commands/history';
+import { withNetStyles } from '../core/commands/netStyles';
+import { describeMerges, type MergeReport } from '../core/connectivity/netStyles';
 import type { FeatureId } from '../core/model/features';
 import type { Project } from '../core/model/project';
 import { setActiveLayer } from '../core/view/viewState';
@@ -48,16 +50,26 @@ function reconcileTool(tool: ActiveTool, before: Project, after: Project): Activ
     : tool;
 }
 
-/** Runs commands, each as one undo step. */
-export function applyCommands(s: EditorData, commands: readonly Command[]): Partial<EditorData> {
-  const step = commands.reduce<Step>((acc, c) => execute(acc.project, acc.history, c), {
-    project: s.project,
-    history: s.history,
-  });
+/**
+ * Runs commands, each as one undo step, with net styles kept consistent (docs/adr/0008). When a
+ * merge drops a net's name or colour, `notice` says which net kept its own.
+ */
+export function applyCommands(
+  s: EditorData,
+  commands: readonly Command[],
+): Partial<EditorData> & { notice?: string } {
+  const merges: MergeReport[] = [];
+  const record = (m: readonly MergeReport[]) => merges.push(...m);
+  const step = commands.reduce<Step>(
+    (acc, c) => execute(acc.project, acc.history, withNetStyles(c, record)),
+    { project: s.project, history: s.history },
+  );
+  const notice = describeMerges(merges);
   return {
     ...step,
     selection: pruneSelection(s.selection, step.project),
     tool: reconcileTool(s.tool, s.project, step.project),
+    ...(notice === null ? {} : { notice }),
   };
 }
 
