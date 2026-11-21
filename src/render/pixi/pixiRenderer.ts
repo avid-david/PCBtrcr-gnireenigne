@@ -7,6 +7,7 @@ import type { ImageId } from '../../core/model/project';
 import type { ImageLookup, Renderer } from '../renderer';
 import type { Scene } from '../scene';
 import { MESH_VERTICES, isTileDrawable, tileCorners } from '../tileQuads';
+import { FeatureLayer } from './featureLayer';
 import { OverlayLayer } from './overlayLayer';
 
 const BACKGROUND = '#15171a';
@@ -44,6 +45,8 @@ function placePhoto(photo: PhotoNode, imageToBoard: Mat3): void {
 
 class PixiRenderer implements Renderer {
   private readonly world = new Container();
+  private readonly photosRoot = new Container();
+  private readonly features = new FeatureLayer();
   private readonly overlay = new OverlayLayer();
   private readonly photos = new Map<ImageId, PhotoNode>();
   private readonly app: Application;
@@ -52,11 +55,12 @@ class PixiRenderer implements Renderer {
   constructor(app: Application, images: ImageLookup<ImageBitmap>) {
     this.app = app;
     this.images = images;
+    this.world.addChild(this.photosRoot, this.features.root);
     app.stage.addChild(this.world, this.overlay.root);
   }
 
   render(scene: Scene): void {
-    this.world.removeChildren();
+    this.photosRoot.removeChildren();
     this.world.scale.set(scene.viewport.zoom);
     this.world.position.set(scene.viewport.offset.x, scene.viewport.offset.y);
     for (const layer of scene.layers) {
@@ -64,9 +68,10 @@ class PixiRenderer implements Renderer {
       if (photo !== undefined) {
         placePhoto(photo, layer.imageToBoard);
         photo.container.alpha = layer.opacity;
-        this.world.addChild(photo.container);
+        this.photosRoot.addChild(photo.container);
       }
     }
+    this.features.draw(scene);
     this.overlay.draw(scene);
     this.app.render();
   }
@@ -85,6 +90,7 @@ class PixiRenderer implements Renderer {
       this.forgetImage(id);
     });
     this.overlay.destroy();
+    this.features.destroy();
     this.app.destroy(true, { children: true });
   }
 
