@@ -32,6 +32,7 @@ src/
   app/        Composition root: wires everything together.
 ```
 
+- Outside `src/`: `scripts/` holds repo tooling (e.g. the CRAP check), `e2e/` the Playwright tests.
 - `core` imports nothing from other `src/` folders. `tools` may import `core`. `render` and `ui` may import
   `core` and `tools`. Only `app` knows about everything. Enforce with dependency-cruiser in CI.
 - **All model mutations go through commands** (`execute` / `undo`). No direct mutation from UI or tools.
