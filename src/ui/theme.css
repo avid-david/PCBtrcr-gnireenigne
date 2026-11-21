@@ -1,0 +1,92 @@
+/* Dark theme is the default (SPEC: non-functional requirements). */
+:root {
+  color-scheme: dark;
+  --color-bg: #15171a;
+  --color-surface: #1e2125;
+  --color-border: #33373d;
+  --color-text: #e6e8eb;
+  --color-text-muted: #a3a9b1;
+  --color-focus: #6cb6ff;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: 14px/1.4 var(--font-ui);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.shell {
+  display: grid;
+  grid-template:
+    'header header header' auto
+    'toolbar canvas panel' 1fr
+    'status status status' auto
+    / 48px 1fr 280px;
+  height: 100%;
+  min-width: 0;
+}
+
+.shell__header {
+  grid-area: header;
+  padding: 8px 12px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.shell__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.shell__toolbar {
+  grid-area: toolbar;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+}
+
+.shell__canvas {
+  grid-area: canvas;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.shell__empty {
+  color: var(--color-text-muted);
+}
+
+.shell__panel {
+  grid-area: panel;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+}
+
+.shell__status {
+  grid-area: status;
+  padding: 4px 12px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
