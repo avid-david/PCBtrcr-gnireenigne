@@ -1,5 +1,6 @@
 import { flipComponents, oppositeLayer, rotateComponents } from '../core/commands/components';
 import { moveFeatures, removeFeatures } from '../core/commands/features';
+import { isFeatureLocked } from '../core/connectivity/netStyles';
 import { distance, rectBetween } from '../core/geometry/distance';
 import { sub, type Vec2 } from '../core/geometry/vec2';
 import { featureBounds, featureDistance, featureOnLayer } from '../core/model/featureKinds';
@@ -35,8 +36,12 @@ export type SelectState =
 
 const IDLE: SelectState = { mode: 'idle' };
 
-/** Inactive-layer features are not editable; features on every layer always are (SPEC). */
-const editable = (f: Feature, ctx: ToolContext): boolean => featureOnLayer(f, ctx.activeLayerId);
+/**
+ * Inactive-layer features are not editable; features on every layer always are (SPEC). Features
+ * of a locked net cannot be selected at all, so they cannot be moved or deleted (docs/adr/0008).
+ */
+const editable = (f: Feature, ctx: ToolContext): boolean =>
+  featureOnLayer(f, ctx.activeLayerId) && !isFeatureLocked(ctx.project, f);
 
 /**
  * Which hit wins, matching how features are drawn: planes lie under everything, traces over

@@ -17,6 +17,7 @@ import {
   setContentVisible,
   type LayerContent,
 } from '../core/view/viewState';
+import { setNetStyle } from '../core/connectivity/netStyles';
 import { featureScene, NO_NET_COLOR } from './featureScene';
 import { NOTE_COLOR, SILK_COLOR, textTransform } from './textItems';
 
@@ -150,5 +151,26 @@ describe('text placement', () => {
       x: 14,
       y: 5,
     });
+  });
+});
+
+describe('net highlight and styles', () => {
+  const project = setNetStyle(board, 'v', { color: 0x112233 });
+
+  it('draws the highlighted net on full strength everywhere and dims the rest, pad by pad', () => {
+    const view = { ...createViewState(project), highlight: 'v' };
+    const scene = featureScene(project, view);
+    const dimmed = Object.fromEntries(scene.drawables.map((d) => [d.feature.id, d.dimmed]));
+    expect(dimmed).toMatchObject({ v: false, t: false, r: false, p: false, n: true, st: true });
+    expect(scene.drawables.find((d) => d.feature.id === 'r')?.padDimmed).toEqual([true, false]);
+    expect(
+      featureScene(project, createViewState(project)).drawables.find((d) => d.feature.id === 'r')
+        ?.padDimmed,
+    ).toEqual([false, false]);
+  });
+
+  it('uses a net colour the user chose', () => {
+    const scene = featureScene(project, createViewState(project));
+    expect(scene.drawables.find((d) => d.feature.id === 'v')?.color).toBe(0x112233);
   });
 });

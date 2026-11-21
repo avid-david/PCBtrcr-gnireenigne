@@ -6,6 +6,8 @@ export interface ProjectFileActions {
   readonly saveProject: () => void;
   readonly restoreRecovery: () => void;
   readonly discardRecovery: () => void;
+  /** Downloads the project in a registered export format (core/export). */
+  readonly exportProject: (exporterId: string) => void;
 }
 
 export const PROJECT_FILE_ACCEPT = '.pcbrt';

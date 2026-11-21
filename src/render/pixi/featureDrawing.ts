@@ -12,6 +12,8 @@ const DRILL = 0x0b0c0e;
 const OUTLINE_MM = 0.12;
 /** Opacity of a plane's fill relative to its outline, so what lies on it stays readable. */
 const PLANE_FILL = 0.35;
+/** Opacity of a pad that is not on the highlighted net (as for dimmed features). */
+const DIMMED_PAD = 0.3;
 
 export interface Paint {
   readonly color: number;
@@ -20,6 +22,8 @@ export interface Paint {
   readonly points: readonly Vec2[];
   /** Net colour of each component pad. */
   readonly padColors: readonly number[];
+  /** Per component pad: drawn faint (a net is highlighted that it is not on). */
+  readonly padDimmed: readonly boolean[];
   readonly show: { readonly copper: boolean; readonly print: boolean };
 }
 
@@ -34,9 +38,10 @@ const polyline = (g: Graphics, points: readonly Vec2[]) => {
   return g;
 };
 
-function componentPads(g: Graphics, c: Component, { color, alpha, padColors }: Paint) {
+function componentPads(g: Graphics, c: Component, paint: Paint) {
   c.pads.forEach((pad, i) => {
-    g.poly(padPolygon(c, pad)).fill({ color: padColors[i] ?? color, alpha });
+    const alpha = paint.padDimmed[i] === true ? paint.alpha * DIMMED_PAD : paint.alpha;
+    g.poly(padPolygon(c, pad)).fill({ color: paint.padColors[i] ?? paint.color, alpha });
     drill(g, { at: toBoard(c, pad.at), diameterMm: pad.drillMm }, alpha);
   });
 }

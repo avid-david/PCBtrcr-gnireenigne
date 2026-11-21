@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { updateFeature, removeFeatures } from '../core/commands/features';
-import { netColor } from '../core/connectivity/netColors';
-import { deriveNets } from '../core/connectivity/nets';
+import { deriveNets, type Net } from '../core/connectivity/nets';
+import { netAppearance } from '../core/connectivity/netStyles';
+import { toggleHighlight } from '../core/view/viewState';
 import type { Feature } from '../core/model/features';
 import { templateFeature, type TemplateKind } from '../tools/place';
 import { toolTemplateKind } from '../tools/registry';
@@ -29,12 +30,39 @@ function NetBadge({ feature }: { feature: Feature }) {
   if (net === undefined) {
     return <p className="inspector__net">{NO_NET[feature.kind] ?? 'Not connectable'}</p>;
   }
+  return <NetLine net={net} />;
+}
+
+/** The net's colour, name and size, with a button to highlight it on both layers. */
+function NetLine({ net }: { net: Net }) {
+  const store = useEditorStore();
+  // Select the project and derive the look outside the selector: a selector returning a new
+  // object on every call makes React re-render forever.
+  const project = useEditor((s) => s.project);
+  const look = useMemo(() => netAppearance(project, net), [project, net]);
+  const highlighted = useEditor(
+    (s) => s.view.highlight !== null && net.anchors.includes(s.view.highlight),
+  );
   const anchors = `${String(net.anchors.length)} anchor${net.anchors.length === 1 ? '' : 's'}`;
   return (
-    <p className="inspector__net" aria-label="Net">
-      <span className="swatch" style={{ background: hex(netColor(net.id)) }} aria-hidden="true" />
-      Net {net.number} · {anchors}
-    </p>
+    <div className="inspector__net-line">
+      <p className="inspector__net" aria-label="Net">
+        <span className="swatch" style={{ background: hex(look.color) }} aria-hidden="true" />
+        {look.name} · {anchors}
+        {look.locked ? ' · locked' : ''}
+      </p>
+      <button
+        type="button"
+        className="button"
+        aria-pressed={highlighted}
+        title="Highlight this net on both layers (Esc clears)"
+        onClick={() => {
+          store.getState().updateView((view) => toggleHighlight(view, net.id));
+        }}
+      >
+        Highlight
+      </button>
+    </div>
   );
 }
 

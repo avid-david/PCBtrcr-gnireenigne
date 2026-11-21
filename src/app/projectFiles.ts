@@ -1,3 +1,5 @@
+import { strToU8 } from 'fflate';
+import { EXPORTERS } from '../core/export/exporters';
 import {
   describeArchiveError,
   readArchive,
@@ -166,4 +168,20 @@ export function saveProjectFile<P>(
   write(name, packProject(project, images));
   store.getState().markSaved(project, fileName);
   store.getState().setNotice(`Saved ${name}`);
+}
+
+/** Exports the project in a registered format, named after the project (e.g. board.csv). */
+export function exportProject(
+  store: EditorStore,
+  exporterId: string,
+  write: (fileName: string, bytes: Uint8Array, mimeType: string) => void,
+): void {
+  const exporter = EXPORTERS.find((e) => e.id === exporterId);
+  if (exporter === undefined) {
+    return;
+  }
+  const { project, fileName } = store.getState();
+  const name = `${fileName}${exporter.extension}`;
+  write(name, strToU8(exporter.export(project)), exporter.mimeType);
+  store.getState().setNotice(`Exported ${name}`);
 }

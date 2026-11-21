@@ -1,8 +1,9 @@
-import { netColor } from '../core/connectivity/netColors';
-import { deriveNets, type Nets } from '../core/connectivity/nets';
+import { deriveNets, type Net, type Nets } from '../core/connectivity/nets';
+import { netAppearance } from '../core/connectivity/netStyles';
+import { anchorsOf } from '../core/model/anchors';
 import type { Vec2 } from '../core/geometry/vec2';
 import { featureOnLayer, tracePoints } from '../core/model/featureKinds';
-import type { Feature, FeatureId } from '../core/model/features';
+import type { AnchorId, Feature, FeatureId } from '../core/model/features';
 import type { LayerId, Project } from '../core/model/project';
 import { isContentVisible, type LayerContent, type ViewState } from '../core/view/viewState';
 import { textItemsOf, type TextItem } from './textItems';
@@ -18,6 +19,8 @@ export interface FeatureDrawable {
   readonly color: number;
   /** Net colour of each pad of a component, in pad order; empty for other kinds. */
   readonly padColors: readonly number[];
+  /** Per component pad: faint because a net is highlighted that it is not on. */
+  readonly padDimmed: readonly boolean[];
   /** Which parts are shown: copper, and print (silkscreen, or the text of a note). */
   readonly show: { readonly copper: boolean; readonly print: boolean };
   /** Only on an inactive layer: drawn faintly and not editable (SPEC "Layers and overlay"). */
@@ -48,24 +51,38 @@ const CONTENT: Readonly<Record<Feature['kind'], readonly LayerContent[]>> = {
   text: ['text'],
 };
 
-const colorOf = (nets: Nets, f: Feature): number => {
-  const net = nets.netOfFeature(f.id);
-  return net === undefined ? NO_NET_COLOR : netColor(net.id);
-};
-
-const padColorsOf = (nets: Nets, f: Feature): number[] =>
-  f.kind === 'component'
-    ? f.pads.map((p) => {
-        const net = nets.netOfAnchor(p.id);
-        return net === undefined ? NO_NET_COLOR : netColor(net.id);
-      })
-    : [];
-
 interface Context {
   readonly project: Project;
   readonly nets: Nets;
   readonly view: ViewState;
+  /** Anchors of the highlighted net, or null when no net is highlighted. */
+  readonly highlighted: ReadonlySet<AnchorId> | null;
 }
+
+/** A net's colour: the user's choice, else the automatic one (docs/adr/0008). */
+const colorOfNet = (ctx: Context, net: Net | undefined): number =>
+  net === undefined ? NO_NET_COLOR : netAppearance(ctx.project, net).color;
+
+const padColorsOf = (ctx: Context, f: Feature): number[] =>
+  f.kind === 'component' ? f.pads.map((p) => colorOfNet(ctx, ctx.nets.netOfAnchor(p.id))) : [];
+
+/** While a net is highlighted, a component's pads on other nets are faint. */
+const padDimmedOf = (ctx: Context, f: Feature): boolean[] =>
+  f.kind === 'component'
+    ? f.pads.map((p) => ctx.highlighted !== null && !ctx.highlighted.has(p.id))
+    : [];
+
+/** Whether the feature belongs to the highlighted net (planes through what is attached). */
+const inHighlight = (set: ReadonlySet<AnchorId>, f: Feature): boolean =>
+  [...anchorsOf(f).map((a) => a.id), ...(f.kind === 'plane' ? f.attached : [])].some((id) =>
+    set.has(id),
+  );
+
+/** Faint: on another layer, or (while a net is highlighted) not part of it. */
+const isDimmed = (ctx: Context, f: Feature): boolean =>
+  ctx.highlighted === null
+    ? !featureOnLayer(f, ctx.view.activeLayerId)
+    : !inHighlight(ctx.highlighted, f);
 
 function drawable(ctx: Context, f: Feature): FeatureDrawable {
   const { view, project } = ctx;
@@ -76,10 +93,11 @@ function drawable(ctx: Context, f: Feature): FeatureDrawable {
   return {
     feature: f,
     points: f.kind === 'trace' ? tracePoints(f, project) : [],
-    color: colorOf(ctx.nets, f),
-    padColors: padColorsOf(ctx.nets, f),
+    color: colorOfNet(ctx, ctx.nets.netOfFeature(f.id)),
+    padColors: padColorsOf(ctx, f),
+    padDimmed: padDimmedOf(ctx, f),
     show: { copper: visible('copper'), print: visible('silk') || visible('text') },
-    dimmed: !featureOnLayer(f, view.activeLayerId),
+    dimmed: isDimmed(ctx, f),
   };
 }
 
@@ -107,7 +125,9 @@ const sameItems = (a: readonly string[], b: readonly string[]) =>
   a.length === b.length && a.every((item, i) => item === b[i]);
 
 const sameLook = (a: ViewState, b: ViewState) =>
-  a.activeLayerId === b.activeLayerId && sameItems(a.hiddenContent, b.hiddenContent);
+  a.activeLayerId === b.activeLayerId &&
+  a.highlight === b.highlight &&
+  sameItems(a.hiddenContent, b.hiddenContent);
 
 /**
  * Features in drawing order: inactive-layer features first (under), then the active layer's
@@ -119,7 +139,9 @@ export function featureScene(project: Project, view: ViewState): FeatureScene {
   if (last?.project === project && sameLook(last.view, view)) {
     return last.result;
   }
-  const ctx = { project, nets: deriveNets(project), view };
+  const nets = deriveNets(project);
+  const net = view.highlight === null ? undefined : nets.netOfAnchor(view.highlight);
+  const ctx = { project, nets, view, highlighted: net === undefined ? null : new Set(net.anchors) };
   const all = project.features.map((f) => drawable(ctx, f)).filter(isShown);
   const drawables = [
     ...planesFirst(all.filter((d) => d.dimmed)),

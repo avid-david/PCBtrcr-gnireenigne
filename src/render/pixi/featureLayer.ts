@@ -7,7 +7,7 @@ import type { ToolOverlay } from '../../tools/tool';
 import { drawFeature, drawGhostFeature, type Paint } from './featureDrawing';
 
 const SHOW_ALL = { copper: true, print: true };
-const GHOST = { color: 0xffffff, alpha: 0.45, padColors: [], show: SHOW_ALL };
+const GHOST = { color: 0xffffff, alpha: 0.45, padColors: [], padDimmed: [], show: SHOW_ALL };
 /** Glyphs are rendered at this size and scaled to the text height in mm. */
 const FONT_PX = 64;
 const SNAP_RING_PX = 7;
@@ -111,6 +111,7 @@ function drawCopper(g: Graphics, features: readonly FeatureDrawable[]): void {
       alpha: d.dimmed ? DIMMED_ALPHA : 1,
       points: d.points,
       padColors: d.padColors,
+      padDimmed: d.padDimmed,
       show: d.show,
     };
     drawFeature(g, d.feature, paint);

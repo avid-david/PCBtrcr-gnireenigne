@@ -1,5 +1,6 @@
 import { DEFAULT_VIEWPORT, fitToRect, type ScreenSize, type Viewport } from '../geometry/viewport';
 import { projectBounds } from '../alignment/bounds';
+import type { AnchorId } from '../model/features';
 import type { LayerId, Project } from '../model/project';
 
 /**
@@ -15,6 +16,10 @@ export interface ViewState {
   readonly hiddenPhotos: readonly LayerId[];
   /** Content hidden per layer (SPEC "Layers and overlay"), as `layerId:content` keys. */
   readonly hiddenContent: readonly string[];
+  /** A member anchor of the net shown highlighted on every layer (SPEC F5), or null. */
+  readonly highlight: AnchorId | null;
+  /** Unit lengths are shown and typed in; the model is always in mm. */
+  readonly units: 'mm' | 'mil';
 }
 
 /** What can be shown or hidden per layer besides its photo. */
@@ -33,6 +38,8 @@ export function createViewState(project: Project): ViewState {
     overlayOpacity: DEFAULT_OVERLAY_OPACITY,
     hiddenPhotos: [],
     hiddenContent: [],
+    highlight: null,
+    units: 'mm',
   };
 }
 
@@ -87,3 +94,9 @@ export function setContentVisible(
 /** Whether copper, silkscreen or text of a layer is shown. */
 export const isContentVisible = (view: ViewState, id: LayerId, content: LayerContent): boolean =>
   !view.hiddenContent.includes(contentKey(id, content));
+
+/** Highlights the net containing `anchor`; highlighting the same net again clears it. */
+export const toggleHighlight = (view: ViewState, anchor: AnchorId | null): ViewState => ({
+  ...view,
+  highlight: anchor === null || view.highlight === anchor ? null : anchor,
+});
