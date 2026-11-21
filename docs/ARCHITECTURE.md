@@ -3,7 +3,8 @@
 PCB Reverse Tracer is a browser app (Vite + React + TypeScript). Rendering uses WebGL via PixiJS behind a
 `Renderer` interface. The rules behind this document are in [CLAUDE.md](../CLAUDE.md); the stack decision
 is [ADR 0001](adr/0001-stack.md), coordinates are in [ADR 0002](adr/0002-coordinates-and-transforms.md),
-photo display in [ADR 0003](adr/0003-image-display.md) and alignment in [ADR 0004](adr/0004-alignment.md).
+photo display in [ADR 0003](adr/0003-image-display.md), alignment in [ADR 0004](adr/0004-alignment.md)
+and features, connectivity, undo and tools in [ADR 0005](adr/0005-features-connectivity-undo.md).
 
 ## Layers
 
@@ -21,8 +22,8 @@ Dependencies point inward. Arrows mean "may import".
 
 | Folder | Contents | May import | Exists since |
 | --- | --- | --- | --- |
-| `src/core/` | Pure domain logic: geometry, model, alignment, view, commands (later connectivity, footprints, io). No DOM, React, PixiJS or browser APIs. | nothing outside `core` | M0 |
-| `src/tools/` | Editor interaction state machines: pan/zoom navigation (M1), align mode (M2), one file per editing `Tool` (M3). They return commands, never mutate. | `core` | M1 |
+| `src/core/` | Pure domain logic: geometry, model (incl. copper features), alignment, connectivity, view, commands and undo history (later footprints, io). No DOM, React, PixiJS or browser APIs. | nothing outside `core` | M0 |
+| `src/tools/` | Interaction state machines: pan/zoom navigation, and the registered editing tools (select, trace, via, pad, point, hole, align) with snapping. They return commands, never mutate. | `core` | M1 |
 | `src/render/` | `buildScene` (state → what to draw, incl. outline and alignment markers), the `Renderer` interface and its PixiJS implementation. Reads state, never mutates it. | `core`, `tools` (not `ui`) | M1 |
 | `src/ui/` | React components and the Zustand editor store. Thin: dispatch commands, show state, turn DOM events into tool inputs. | `core`, `tools` (not `render`) | M0 |
 | `src/platform/` | File access and image decoding (later storage, clipboard); browser vs desktop adapters. | `core` | M1 |
@@ -36,22 +37,27 @@ file input ─► app/importPhoto ─► platform/imageLoader (decode + tile) �
                    └─► store.dispatch(setLayerImage) ─► project (metadata only)
 
 pointer / wheel / keys ─► ui (DOM events) ─► tools/navigation ─► store.updateView(viewport)
-                                   │ (left clicks navigation leaves, in align mode)
-                                   └─► tools/align ─► commands + layer switch ─► store
+                                   │ (events navigation leaves: clicks, Shift, double-clicks, keys)
+                                   └─► active tool (tools/registry) ─► commands, selection, layer ─► store
+                                                                          │
+                                         core/commands/history ◄──────────┘ (one undo step each)
 
 store change ─► app/boardController (at most once per frame) ─► render/buildScene ─► Renderer.render
                                                                   │
-                         core/alignment/solveAlignment (cached per project) ◄─┘
+     core/alignment/solveAlignment, core/connectivity/deriveNets (cached per project) ◄─┘
 ```
 
 - **Project** (`core/model`): what will be saved — layers, photo metadata, mirror flag, board size,
-  corner clicks and matched points. Changed only by commands (`core/commands`). Alignment transforms,
-  residuals and outlier flags are derived from it (`core/alignment`), never stored.
-- **Align state** (`tools/align`, held in the store): mode, a pending match click and a point being
-  dragged. Transient; while dragging, canvas and panel show `previewProject`.
+  corner clicks, matched points and copper features (trace vertices tied to anchors by id). Changed
+  only by commands (`core/commands`). Alignment transforms, residuals, outlier flags, nets and net
+  colours are derived from it, never stored.
+- **History** (`core/commands/history`): the project before each step; undo restores it exactly.
+- **Tool state, selection and tool settings** (store): transient editor state, not saved. While a
+  tool drags something (features, an alignment point), canvas and panel show the tool's `preview`.
 - **View state** (`core/view`): active layer, viewport, overlay opacity, hidden photos. Looking at the
   board is not an edit, so view changes are not commands and are not saved with the project.
-- **Pixels**: decoded photo tiles live in the app's image registry, keyed by image id, outside the model.
+- **Pixels**: decoded photo tiles live in the app's image registry, keyed by image id, outside the
+  model, for as long as the project or its undo history refers to them.
 
 ## How the rules are enforced
 
@@ -66,7 +72,7 @@ store change ─► app/boardController (at most once per frame) ─► render/b
 
 ## Key conventions
 
-- **All model mutations go through commands** (`execute`; `undo` arrives with the history in M3); UI and
+- **All model mutations go through commands** (`execute`, recorded by the history for undo/redo); UI and
   tools never mutate the project directly.
 - The persisted model is plain, serializable data. **Derived data (nets, net colors) is never stored.**
 - Internal units are millimetres in board space. Image pixels exist only inside `core/alignment`.
