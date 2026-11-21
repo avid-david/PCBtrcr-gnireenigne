@@ -51,16 +51,20 @@ async function cutTiles<P>(
   decoded: Decoded<P>,
 ): Promise<Result<ImageTile<P>[], ImageLoadError>> {
   const rects = tileGrid(decoded.widthPx, decoded.heightPx);
-  try {
-    const tiles = await Promise.all(
-      rects.map(async (rect) => ({ rect, pixels: await codec.crop(decoded.pixels, rect) })),
-    );
+  // allSettled, not all: when one crop fails the others still finish, and their tiles must be freed.
+  const settled = await Promise.allSettled(
+    rects.map(async (rect) => ({ rect, pixels: await codec.crop(decoded.pixels, rect) })),
+  );
+  codec.release(decoded.pixels);
+  const tiles = settled.flatMap((s) => (s.status === 'fulfilled' ? [s.value] : []));
+  const failure = settled.find((s): s is PromiseRejectedResult => s.status === 'rejected');
+  if (failure === undefined) {
     return ok(tiles);
-  } catch (cause) {
-    return err({ kind: 'decode-failed', reason: reasonOf(cause) });
-  } finally {
-    codec.release(decoded.pixels);
   }
+  tiles.forEach((tile) => {
+    codec.release(tile.pixels);
+  });
+  return err({ kind: 'decode-failed', reason: reasonOf(failure.reason) });
 }
 
 /** Builds a loader that validates, decodes and tiles a photo; failures come back as `Result`. */

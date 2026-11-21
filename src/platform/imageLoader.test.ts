@@ -69,6 +69,21 @@ describe('image loader', () => {
     expect(released).toEqual(['top.png']);
   });
 
+  it('frees the tiles that were cut when another tile fails', async () => {
+    const { codec, released } = fakeCodec({ widthPx: 6000, heightPx: 5000 });
+    const crop = codec.crop.bind(codec);
+    codec.crop = (pixels, rect) =>
+      rect.x > 0 && rect.y > 0 ? Promise.reject(new Error('lost context')) : crop(pixels, rect);
+    const result = await createImageLoader(codec)(png);
+    expect(result).toEqual({ ok: false, error: { kind: 'decode-failed', reason: 'lost context' } });
+    expect([...released].sort()).toEqual([
+      'top.png',
+      'top.png@0,0',
+      'top.png@0,4096',
+      'top.png@4096,0',
+    ]);
+  });
+
   it('refuses photos above the size limit and frees them', async () => {
     const { codec, released } = fakeCodec({ widthPx: 20_000, heightPx: 10_000 });
     const result = await createImageLoader(codec)(png);
