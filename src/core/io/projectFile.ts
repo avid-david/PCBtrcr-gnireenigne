@@ -1,11 +1,11 @@
-import { anchorIndex } from '../model/anchors';
 import type { Project } from '../model/project';
 import { err, ok, type Result } from '../result';
 import { migrate } from './migrations';
-import { documentV1 } from './schemaV1';
+import { brokenReference } from './references';
+import { documentV2 } from './schemaV2';
 
 /** The schema version this build writes, and the newest it can read. */
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 export type LoadError =
   | { readonly kind: 'invalid-json' }
@@ -41,7 +41,7 @@ function versionOf(doc: unknown): Result<number, LoadError> {
 }
 
 function validate(doc: unknown): Result<Project, LoadError> {
-  const parsed = documentV1.safeParse(doc);
+  const parsed = documentV2.safeParse(doc);
   if (parsed.success) {
     return ok(parsed.data.project);
   }
@@ -53,26 +53,9 @@ function validate(doc: unknown): Result<Project, LoadError> {
   });
 }
 
-/** Ties must point at existing anchors and matches at existing layers. */
 function checkReferences(project: Project): Result<Project, LoadError> {
-  const anchors = anchorIndex(project);
-  const layerIds = new Set(project.layers.map((l) => l.id));
-  const dangling = [...anchors.values()].find((a) => a.boundTo !== null && !anchors.has(a.boundTo));
-  if (dangling !== undefined) {
-    return err({
-      kind: 'broken-reference',
-      message: `trace point ${dangling.id} is tied to a missing anchor`,
-    });
-  }
-  const strayMatch = project.matches.find((m) =>
-    Object.keys(m.points).some((id) => !layerIds.has(id)),
-  );
-  return strayMatch === undefined
-    ? ok(project)
-    : err({
-        kind: 'broken-reference',
-        message: `matched point ${strayMatch.id} names a missing layer`,
-      });
+  const message = brokenReference(project);
+  return message === null ? ok(project) : err({ kind: 'broken-reference', message });
 }
 
 /** Reads `project.json`: any supported version is migrated to the current one and validated. */

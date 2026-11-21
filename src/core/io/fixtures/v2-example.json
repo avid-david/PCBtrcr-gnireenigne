@@ -1,0 +1,393 @@
+{
+  "schemaVersion": 2,
+  "project": {
+    "board": {
+      "widthMm": 50,
+      "heightMm": 30
+    },
+    "layers": [
+      {
+        "id": "top",
+        "name": "Top",
+        "side": "top",
+        "image": {
+          "id": "img-top",
+          "fileName": "top.jpg",
+          "mimeType": "image/jpeg",
+          "widthPx": 4000,
+          "heightPx": 2400
+        },
+        "mirrored": false,
+        "corners": {
+          "tl": {
+            "x": 100,
+            "y": 80
+          },
+          "tr": {
+            "x": 3900,
+            "y": 90
+          },
+          "br": {
+            "x": 3890,
+            "y": 2310
+          },
+          "bl": {
+            "x": 110,
+            "y": 2300
+          }
+        }
+      },
+      {
+        "id": "bottom",
+        "name": "Bottom",
+        "side": "bottom",
+        "image": null,
+        "mirrored": true,
+        "corners": {}
+      }
+    ],
+    "matches": [
+      {
+        "id": "m1",
+        "points": {
+          "top": {
+            "x": 500,
+            "y": 600
+          },
+          "bottom": {
+            "x": 3500,
+            "y": 610
+          }
+        }
+      }
+    ],
+    "features": [
+      {
+        "kind": "via",
+        "id": "v1",
+        "at": {
+          "x": 10,
+          "y": 10
+        },
+        "drillMm": 0.3,
+        "padMm": 0.6
+      },
+      {
+        "kind": "hole",
+        "id": "h1",
+        "at": {
+          "x": 3,
+          "y": 3
+        },
+        "diameterMm": 3.2,
+        "plated": false
+      },
+      {
+        "kind": "pad",
+        "id": "p1",
+        "at": {
+          "x": 20,
+          "y": 10
+        },
+        "shape": "round",
+        "widthMm": 1.7,
+        "heightMm": 1.7,
+        "layerId": null,
+        "drillMm": 1
+      },
+      {
+        "kind": "pad",
+        "id": "p2",
+        "at": {
+          "x": 30,
+          "y": 15
+        },
+        "shape": "rect",
+        "widthMm": 1.2,
+        "heightMm": 0.6,
+        "layerId": "top",
+        "drillMm": 0
+      },
+      {
+        "kind": "point",
+        "id": "c1",
+        "at": {
+          "x": 40,
+          "y": 20
+        },
+        "layerId": "bottom",
+        "diameterMm": 0.8
+      },
+      {
+        "kind": "trace",
+        "id": "t1",
+        "layerId": "top",
+        "widthMm": 0.25,
+        "vertices": [
+          {
+            "id": "t1a",
+            "kind": "bound",
+            "anchor": "v1"
+          },
+          {
+            "id": "t1b",
+            "kind": "free",
+            "at": {
+              "x": 15,
+              "y": 10
+            }
+          },
+          {
+            "id": "t1c",
+            "kind": "bound",
+            "anchor": "p1"
+          }
+        ]
+      },
+      {
+        "kind": "trace",
+        "id": "t2",
+        "layerId": "bottom",
+        "widthMm": 0.5,
+        "vertices": [
+          {
+            "id": "t2a",
+            "kind": "bound",
+            "anchor": "v1"
+          },
+          {
+            "id": "t2b",
+            "kind": "bound",
+            "anchor": "c1"
+          }
+        ]
+      },
+      {
+        "kind": "component",
+        "id": "j1",
+        "layerId": "top",
+        "flipped": false,
+        "at": {
+          "x": 10,
+          "y": 20
+        },
+        "rotationDeg": 0,
+        "designator": "J1",
+        "value": "Header",
+        "footprint": {
+          "id": "pin-header",
+          "name": "PinHeader_1x02_P2.54mm",
+          "params": {
+            "rows": "1",
+            "pins": 2,
+            "pitch": "2.54"
+          }
+        },
+        "pads": [
+          {
+            "id": "j1-1",
+            "number": "1",
+            "at": {
+              "x": 0,
+              "y": -1.27
+            },
+            "shape": "rect",
+            "widthMm": 1.7,
+            "heightMm": 1.7,
+            "drillMm": 1
+          },
+          {
+            "id": "j1-2",
+            "number": "2",
+            "at": {
+              "x": 0,
+              "y": 1.27
+            },
+            "shape": "round",
+            "widthMm": 1.7,
+            "heightMm": 1.7,
+            "drillMm": 1
+          }
+        ],
+        "outline": [
+          [
+            {
+              "x": -1.27,
+              "y": -2.54
+            },
+            {
+              "x": 1.27,
+              "y": -2.54
+            },
+            {
+              "x": 1.27,
+              "y": 2.54
+            },
+            {
+              "x": -1.27,
+              "y": 2.54
+            },
+            {
+              "x": -1.27,
+              "y": -2.54
+            }
+          ]
+        ]
+      },
+      {
+        "kind": "component",
+        "id": "r1",
+        "layerId": "bottom",
+        "flipped": true,
+        "at": {
+          "x": 25,
+          "y": 20
+        },
+        "rotationDeg": 90,
+        "designator": "R1",
+        "value": "10k",
+        "footprint": {
+          "id": "chip",
+          "name": "Chip_0805_2012Metric",
+          "params": {
+            "size": "0805"
+          }
+        },
+        "pads": [
+          {
+            "id": "r1-1",
+            "number": "1",
+            "at": {
+              "x": -0.9125,
+              "y": 0
+            },
+            "shape": "rect",
+            "widthMm": 1.025,
+            "heightMm": 1.4,
+            "drillMm": 0
+          },
+          {
+            "id": "r1-2",
+            "number": "2",
+            "at": {
+              "x": 0.9125,
+              "y": 0
+            },
+            "shape": "rect",
+            "widthMm": 1.025,
+            "heightMm": 1.4,
+            "drillMm": 0
+          }
+        ],
+        "outline": [
+          [
+            {
+              "x": -1,
+              "y": -0.625
+            },
+            {
+              "x": 1,
+              "y": -0.625
+            },
+            {
+              "x": 1,
+              "y": 0.625
+            },
+            {
+              "x": -1,
+              "y": 0.625
+            },
+            {
+              "x": -1,
+              "y": -0.625
+            }
+          ]
+        ]
+      },
+      {
+        "kind": "trace",
+        "id": "t3",
+        "layerId": "bottom",
+        "widthMm": 0.3,
+        "vertices": [
+          {
+            "id": "t3a",
+            "kind": "bound",
+            "anchor": "j1-2"
+          },
+          {
+            "id": "t3b",
+            "kind": "bound",
+            "anchor": "r1-1"
+          }
+        ]
+      },
+      {
+        "kind": "plane",
+        "id": "g1",
+        "layerId": "top",
+        "outline": [
+          {
+            "x": 30,
+            "y": 2
+          },
+          {
+            "x": 48,
+            "y": 2
+          },
+          {
+            "x": 48,
+            "y": 28
+          },
+          {
+            "x": 30,
+            "y": 28
+          }
+        ],
+        "attached": ["p2"]
+      },
+      {
+        "kind": "text",
+        "id": "n1",
+        "layerId": "top",
+        "at": {
+          "x": 2,
+          "y": 26
+        },
+        "text": "check C4",
+        "heightMm": 1.5
+      },
+      {
+        "kind": "silkLine",
+        "id": "s1",
+        "layerId": "top",
+        "points": [
+          {
+            "x": 5,
+            "y": 5
+          },
+          {
+            "x": 15,
+            "y": 5
+          },
+          {
+            "x": 15,
+            "y": 8
+          }
+        ],
+        "widthMm": 0.15
+      },
+      {
+        "kind": "silkText",
+        "id": "s2",
+        "layerId": "bottom",
+        "at": {
+          "x": 20,
+          "y": 25
+        },
+        "text": "REV B",
+        "heightMm": 1
+      }
+    ]
+  }
+}

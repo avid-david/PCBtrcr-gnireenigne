@@ -1,11 +1,14 @@
 /**
  * Upgrades of `project.json` between schema versions. `MIGRATIONS[i]` turns a version `i + 1`
- * document into version `i + 2`. Version 1 is the first released format, so the list is empty;
- * the next format change adds a function here and a fixture test for the old version.
+ * document into version `i + 2`. Each format change adds a function here and keeps a fixture of
+ * the old version that must go on loading (src/core/io/fixtures).
  */
 export type Migration = (doc: unknown) => unknown;
 
-export const MIGRATIONS: readonly Migration[] = [];
+/** Version 2 only adds feature kinds, so a version 1 document is valid as it is. */
+const v1ToV2: Migration = (doc) => ({ ...(doc as object), schemaVersion: 2 });
+
+export const MIGRATIONS: readonly Migration[] = [v1ToV2];
 
 /** Applies every migration from `fromVersion` up to the current version. */
 export function migrate(
