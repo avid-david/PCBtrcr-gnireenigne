@@ -39,14 +39,22 @@ const IDLE: SelectState = { mode: 'idle' };
 const editable = (f: Feature, ctx: ToolContext): boolean => featureOnLayer(f, ctx.activeLayerId);
 
 /**
- * The editable feature under the cursor. Pads, vias, points and holes win over traces, whose
- * ends usually lie on them; otherwise the topmost (latest) feature wins.
+ * Which hit wins, matching how features are drawn: planes lie under everything, traces over
+ * planes, and pads, vias, components and text on top (a trace's ends usually lie on them).
  */
+const HIT_RANK: Partial<Readonly<Record<Feature['kind'], number>>> = { plane: 0, trace: 1 };
+const TOP_RANK = 2;
+const rankOf = (f: Feature) => HIT_RANK[f.kind] ?? TOP_RANK;
+
+/** The editable feature under the cursor: the highest rank, and the latest within it. */
 function hitFeature(ctx: ToolContext, at: Vec2, radiusMm: number): Feature | null {
   const hits = ctx.project.features.filter(
     (f) => editable(f, ctx) && featureDistance(f, at, ctx.project) <= radiusMm,
   );
-  return hits.filter((f) => f.kind !== 'trace').at(-1) ?? hits.at(-1) ?? null;
+  return hits.reduce<Feature | null>(
+    (best, f) => (best === null || rankOf(f) >= rankOf(best) ? f : best),
+    null,
+  );
 }
 
 const toggle = (ids: readonly FeatureId[], id: FeatureId): FeatureId[] =>

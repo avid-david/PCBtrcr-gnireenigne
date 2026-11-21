@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { twoPadComponent, withFeatures } from '../core/model/features.test-support';
+import {
+  free,
+  plane,
+  square,
+  trace,
+  twoPadComponent,
+  via,
+  withFeatures,
+} from '../core/model/features.test-support';
 import { createProject } from '../core/model/project';
 import { componentTool } from './component';
-import { click, contextOf, drive, key, move } from './harness.test-support';
+import { click, contextOf, down, drive, key, move, up } from './harness.test-support';
 import { textTool, templateFeature } from './place';
 import { planeTool, silkTool } from './polyline';
 import { toolTemplateKind } from './registry';
@@ -264,5 +272,34 @@ describe('select tool and components', () => {
     const r = drive(selectTool, { ...start(), selection: [] }, [key('r'), key('f'), key('Delete')]);
     expect(r.project.features).toEqual(start().project.features);
     expect(r.activeLayerId).toBe('top');
+  });
+});
+
+describe('select tool and planes', () => {
+  const board = () =>
+    withFeatures([
+      twoPadComponent('c', { x: 0, y: 0 }),
+      via('v', { x: 5, y: 0 }),
+      trace('t', [free('t1', { x: -5, y: 4 }), free('t2', { x: 5, y: 4 })]),
+      plane('p', square(-10, -10, 20)),
+    ]);
+
+  it('selects what lies on a plane, even when the plane was drawn later', () => {
+    expect(drive(selectTool, board(), click({ x: 0, y: 0 })).selection).toEqual(['c']);
+    expect(drive(selectTool, board(), click({ x: 5, y: 0 })).selection).toEqual(['v']);
+    expect(drive(selectTool, board(), click({ x: 0, y: 4 })).selection).toEqual(['t']);
+    expect(drive(selectTool, board(), click({ x: -8, y: -8 })).selection).toEqual(['p']);
+  });
+
+  it('drags a pad-carrying part that lies on a plane, not the plane', () => {
+    const r = drive(selectTool, board(), [
+      down({ x: 0, y: 0 }),
+      move({ x: 2, y: 0 }),
+      up({ x: 2, y: 0 }),
+    ]);
+    expect(r.project.features.find((f) => f.id === 'c')).toMatchObject({ at: { x: 2, y: 0 } });
+    expect(r.project.features.find((f) => f.id === 'p')).toMatchObject({
+      outline: square(-10, -10, 20),
+    });
   });
 });
