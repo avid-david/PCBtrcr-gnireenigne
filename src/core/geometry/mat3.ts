@@ -28,6 +28,22 @@ export const translation = (tx: number, ty: number): Mat3 => [1, 0, tx, 0, 1, ty
 /** Non-uniform scale about the origin. */
 export const scaling = (sx: number, sy: number): Mat3 => [sx, 0, 0, 0, sy, 0, 0, 0, 1];
 
+/** Whether a list of numbers has exactly the nine entries of a Mat3. */
+export const isMat3 = (values: readonly number[]): values is Mat3 => values.length === 9;
+
+/** Every entry multiplied by `k` (homographies are only defined up to such a factor). */
+export const scaleEntries = (m: Mat3, k: number): Mat3 => [
+  m[0] * k,
+  m[1] * k,
+  m[2] * k,
+  m[3] * k,
+  m[4] * k,
+  m[5] * k,
+  m[6] * k,
+  m[7] * k,
+  m[8] * k,
+];
+
 /** Matrix product `a · b`: applying the result equals applying `b` first, then `a`. */
 export function multiply(a: Mat3, b: Mat3): Mat3 {
   const [a0, a1, a2, a3, a4, a5, a6, a7, a8] = a;

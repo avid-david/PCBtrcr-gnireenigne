@@ -46,3 +46,33 @@ describe('editor store', () => {
     expect(store.getState().projectGeneration).toBe(2);
   });
 });
+
+describe('editor store align mode', () => {
+  it('ignores align events while align mode is off and resets it for a new project', () => {
+    const store = createEditorStore();
+    const before = store.getState();
+    store.getState().sendAlign({ type: 'cancel' });
+    expect(store.getState()).toBe(before);
+    store.getState().setAligning(true);
+    store.getState().sendAlign({ type: 'setMode', mode: 'matches' });
+    expect(store.getState().align?.mode).toBe('matches');
+    store.getState().newProject();
+    expect(store.getState().align).toBeNull();
+  });
+});
+
+describe('editor store and replaced photos', () => {
+  it('re-importing a photo cancels a half-made match on it', () => {
+    const store = createEditorStore();
+    store.getState().dispatch(setLayerImage('top', image));
+    store.getState().setAligning(true);
+    store.setState({
+      align: { mode: 'matches', pending: { layerId: 'top', px: { x: 1, y: 1 } }, drag: null },
+    });
+    store.getState().dispatch(setLayerImage('top', { ...image, id: 'replacement' }));
+    expect(store.getState().align?.pending).toBeNull();
+    store.getState().setAligning(false);
+    store.getState().dispatch(setLayerImage('top', image));
+    expect(store.getState().align).toBeNull();
+  });
+});

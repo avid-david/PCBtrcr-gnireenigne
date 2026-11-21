@@ -67,7 +67,25 @@ function NewProjectButton() {
   );
 }
 
-/** Top bar: project and import actions, active layer switch and fit-to-view. */
+function AlignButton() {
+  const store = useEditorStore();
+  const aligning = useEditor((s) => s.align !== null);
+  return (
+    <button
+      type="button"
+      className="button"
+      aria-pressed={aligning}
+      title="Align photos (A)"
+      onClick={() => {
+        store.getState().setAligning(!aligning);
+      }}
+    >
+      Align
+    </button>
+  );
+}
+
+/** Top bar: project and import actions, active layer switch, align mode and fit-to-view. */
 export function Header({ appName, onImportPhoto }: HeaderProps) {
   const store = useEditorStore();
   const layers = useEditor((s) => s.project.layers);
@@ -79,6 +97,7 @@ export function Header({ appName, onImportPhoto }: HeaderProps) {
         <ImportButton key={layer.id} layer={layer} onImportPhoto={onImportPhoto} />
       ))}
       <LayerSwitch />
+      <AlignButton />
       <button
         type="button"
         className="button"

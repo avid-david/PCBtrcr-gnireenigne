@@ -75,3 +75,15 @@ describe('Header', () => {
     expect(store.getState().project.layers[0]?.image).toBeNull();
   });
 });
+
+describe('Header align button', () => {
+  it('toggles align mode and shows its state', () => {
+    const { store } = renderHeader();
+    const button = screen.getByRole('button', { name: 'Align' });
+    fireEvent.click(button);
+    expect(store.getState().align).not.toBeNull();
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(button);
+    expect(store.getState().align).toBeNull();
+  });
+});
