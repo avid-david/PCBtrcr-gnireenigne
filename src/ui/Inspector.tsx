@@ -151,13 +151,12 @@ function GridSettings() {
   );
 }
 
-/** What the active tool will place next: a footprint, the silkscreen mode, default sizes. */
+/** What the active tool will place next: the silkscreen mode and default sizes. */
 function ToolPanel() {
   const kind = useEditor((s) => toolTemplateKind(s.tool.id, s.settings));
   const tool = useEditor((s) => s.tool.id);
   return (
     <>
-      {tool === 'component' ? <FootprintPicker /> : null}
       {tool === 'silk' ? <SilkModeSwitch /> : null}
       {kind === null ? null : <DefaultsInspector kind={kind} />}
     </>
@@ -170,8 +169,11 @@ export function Inspector() {
     s.selection.length === 1 ? s.project.features.find((f) => f.id === s.selection[0]) : undefined,
   );
   const count = useEditor((s) => s.selection.length);
+  // The placed part is selected, so the picker stays above it for placing the next one.
+  const placing = useEditor((s) => s.tool.id === 'component');
   return (
     <>
+      {placing ? <FootprintPicker /> : null}
       {selected !== undefined ? <FeatureInspector feature={selected} /> : null}
       {count > 1 ? <ManySelected count={count} /> : null}
       {count === 0 ? <ToolPanel /> : null}
