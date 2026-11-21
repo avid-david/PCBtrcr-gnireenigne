@@ -35,4 +35,14 @@ describe('editor store', () => {
     expect(state.view.screen).toEqual({ width: 640, height: 480 });
     expect(state.notice).toBeNull();
   });
+
+  it('counts project generations: only a new project increases it', () => {
+    const store = createEditorStore();
+    expect(store.getState().projectGeneration).toBe(0);
+    store.getState().dispatch(setLayerImage('top', image));
+    expect(store.getState().projectGeneration).toBe(0);
+    store.getState().newProject();
+    store.getState().newProject();
+    expect(store.getState().projectGeneration).toBe(2);
+  });
 });

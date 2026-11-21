@@ -11,6 +11,11 @@ export interface EditorState {
   readonly view: ViewState;
   /** Short message for the status bar, e.g. an import error. */
   readonly notice: string | null;
+  /**
+   * Increases with every new project. Async work (e.g. a photo import) compares it before and
+   * after, because layer ids repeat across projects and cannot tell projects apart.
+   */
+  readonly projectGeneration: number;
   dispatch(command: Command): void;
   updateView(update: (view: ViewState, project: Project) => ViewState): void;
   newProject(): void;
@@ -25,6 +30,7 @@ export function createEditorStore(project: Project = createProject()): EditorSto
     project,
     view: createViewState(project),
     notice: null,
+    projectGeneration: 0,
     dispatch: (command) => {
       set((s) => ({ project: command.execute(s.project) }));
     },
@@ -38,6 +44,7 @@ export function createEditorStore(project: Project = createProject()): EditorSto
           project: fresh,
           view: { ...createViewState(fresh), screen: s.view.screen },
           notice: null,
+          projectGeneration: s.projectGeneration + 1,
         };
       });
     },

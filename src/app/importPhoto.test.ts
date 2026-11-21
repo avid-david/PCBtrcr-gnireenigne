@@ -23,7 +23,55 @@ function setup(load: ImageLoader<ImageFile, string>) {
 
 const file = (name: string): ImageFile => ({ name, type: 'image/png' });
 
+/** A loader whose result the test releases by hand, to interleave other actions with loading. */
+type LoadResult = Awaited<ReturnType<ImageLoader<ImageFile, string>>>;
+
+function deferredLoader() {
+  let resolveLoad: (result: LoadResult) => void = () => undefined;
+  const load: ImageLoader<ImageFile, string> = () =>
+    new Promise((resolve) => {
+      resolveLoad = resolve;
+    });
+  const finish = (result: LoadResult) => {
+    resolveLoad(result);
+  };
+  return { load, finish };
+}
+
 describe('photo import', () => {
+  it('drops and frees a photo that finishes loading after a new project was started', async () => {
+    const loader = deferredLoader();
+    const { store, images, released, importPhoto } = setup(loader.load);
+    const pending = importPhoto('top', file('old.png'));
+    store.getState().newProject();
+    loader.finish(ok(loaded('stale', 'old.png')));
+    await pending;
+    expect(store.getState().project.layers.every((l) => l.image === null)).toBe(true);
+    expect(images.get('stale')).toBeUndefined();
+    expect(released).toEqual(['stale-pixels']);
+    expect(store.getState().notice).toBeNull();
+  });
+
+  it('does not report errors of an import from a discarded project', async () => {
+    const loader = deferredLoader();
+    const { store, importPhoto } = setup(loader.load);
+    const pending = importPhoto('top', file('old.gif'));
+    store.getState().newProject();
+    loader.finish(err({ kind: 'unsupported-type', mimeType: 'image/gif' }));
+    await pending;
+    expect(store.getState().notice).toBeNull();
+  });
+
+  it('still applies an import when only the current project was edited meanwhile', async () => {
+    const loader = deferredLoader();
+    const { store, importPhoto } = setup(loader.load);
+    const pending = importPhoto('top', file('top.png'));
+    store.getState().updateView((v) => ({ ...v, overlayOpacity: 0.2 }));
+    loader.finish(ok(loaded('a', 'top.png')));
+    await pending;
+    expect(store.getState().project.layers[0]?.image?.id).toBe('a');
+  });
+
   it('puts the photo on the layer, reports it and fits the first photo', async () => {
     const { store, images, importPhoto } = setup((f) => Promise.resolve(ok(loaded('a', f.name))));
     await importPhoto('bottom', file('bottom.png'));

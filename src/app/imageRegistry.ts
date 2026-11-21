@@ -9,6 +9,8 @@ export interface ImageRegistry<P> {
   remove(id: ImageId): void;
   /** Removes every image not in `keep`. */
   retainOnly(keep: ReadonlySet<ImageId>): void;
+  /** Frees the pixels of an image that was never added (e.g. an import that became stale). */
+  discard(image: LoadedImage<P>): void;
   onRemove(listener: (id: ImageId) => void): () => void;
 }
 
@@ -16,6 +18,11 @@ export interface ImageRegistry<P> {
 export function createImageRegistry<P>(release: (pixels: P) => void): ImageRegistry<P> {
   const images = new Map<ImageId, LoadedImage<P>>();
   const listeners = new Set<(id: ImageId) => void>();
+  const releaseTiles = (image: LoadedImage<P>) => {
+    image.tiles.forEach((tile) => {
+      release(tile.pixels);
+    });
+  };
   const remove = (id: ImageId) => {
     const image = images.get(id);
     if (image === undefined) {
@@ -25,9 +32,7 @@ export function createImageRegistry<P>(release: (pixels: P) => void): ImageRegis
     listeners.forEach((listener) => {
       listener(id);
     });
-    image.tiles.forEach((tile) => {
-      release(tile.pixels);
-    });
+    releaseTiles(image);
   };
   return {
     get: (id) => images.get(id),
@@ -36,6 +41,7 @@ export function createImageRegistry<P>(release: (pixels: P) => void): ImageRegis
     retainOnly: (keep) => {
       [...images.keys()].filter((id) => !keep.has(id)).forEach(remove);
     },
+    discard: releaseTiles,
     onRemove: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
