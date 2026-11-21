@@ -23,9 +23,12 @@
     "crap": "node scripts/crap.ts"
   },
   "dependencies": {
+    "fflate": "0.8.3",
+    "idb-keyval": "6.3.0",
     "pixi.js": "8.23.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "zod": "4.6.7",
     "zustand": "5.1.0"
   },
   "devDependencies": {
