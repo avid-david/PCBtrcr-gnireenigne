@@ -20,7 +20,7 @@ describe('shortcuts', () => {
     const store = createEditorStore();
     expect(runShortcut(store, 'a')).toBe(true);
     expect(store.getState().tool.id).toBe('align');
-    expect(runShortcut(store, 'a', true)).toBe(false);
+    expect(runShortcut(store, 'a', { typing: true })).toBe(false);
     expect(store.getState().tool.id).toBe('align');
     expect(runShortcut(store, 'a')).toBe(true);
     expect(store.getState().tool.id).toBe('select');
@@ -74,7 +74,7 @@ describe('shortcuts', () => {
         state: { mode: 'matches', pending: { layerId: 'top', px: { x: 1, y: 1 } }, drag: null },
       },
     });
-    expect(runShortcut(store, 'Escape', true)).toBe(true);
+    expect(runShortcut(store, 'Escape', { typing: true })).toBe(true);
     expect(alignState(store.getState())?.pending).toBeNull();
   });
 

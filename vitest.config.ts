@@ -38,6 +38,8 @@ export default defineConfig({
         'src/app/main.tsx',
         'src/render/pixi/**',
         'src/platform/browserImage.ts',
+        'src/platform/download.ts',
+        'src/platform/keyValueStore.ts',
       ],
       reporter: ['text', 'json', 'html'],
       thresholds: {

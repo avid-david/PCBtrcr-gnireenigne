@@ -40,6 +40,7 @@ body {
   display: grid;
   grid-template:
     'header header header' auto
+    'banner banner banner' auto
     'toolbar canvas panel' 1fr
     'status status status' auto
     / 48px 1fr 280px;
@@ -62,6 +63,25 @@ body {
   margin: 0 12px 0 0;
   font-size: 15px;
   font-weight: 600;
+}
+
+.shell__file {
+  color: var(--color-text-muted);
+}
+
+.shell__dirty {
+  color: var(--color-text);
+}
+
+.shell__banner {
+  grid-area: banner;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #2b2412;
+  border-bottom: 1px solid #6b5517;
 }
 
 .shell__toolbar {
@@ -426,4 +446,10 @@ body {
 
 .field--check input {
   width: auto;
+}
+
+.button--primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
