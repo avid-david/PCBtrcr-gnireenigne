@@ -33,7 +33,7 @@ describe('view state', () => {
   });
 
   it('copes with a project without layers', () => {
-    const empty = { board: null, layers: [], matches: [] };
+    const empty = { board: null, layers: [], matches: [], features: [] };
     const view = createViewState(empty);
     expect(view.activeLayerId).toBe('');
     expect(cycleActiveLayer(view, empty)).toBe(view);

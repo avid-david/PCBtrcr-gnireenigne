@@ -1,4 +1,5 @@
 import type { Vec2 } from '../geometry/vec2';
+import type { Feature } from './features';
 
 /** Identifier of a layer. A list, not fixed fields, so 4-layer boards can be added later. */
 export type LayerId = string;
@@ -55,6 +56,8 @@ export interface Project {
   readonly board: Board | null;
   readonly layers: readonly Layer[];
   readonly matches: readonly PointMatch[];
+  /** Copper features in drawing order (older first). */
+  readonly features: readonly Feature[];
 }
 
 export const TOP_LAYER_ID: LayerId = 'top';
@@ -76,6 +79,7 @@ export function createProject(): Project {
       },
     ],
     matches: [],
+    features: [],
   };
 }
 
