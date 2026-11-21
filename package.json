@@ -20,7 +20,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "crap": "node scripts/crap.ts"
+    "crap": "node scripts/crap.ts",
+    "perf": "playwright test --config playwright.perf.config.ts"
   },
   "dependencies": {
     "fflate": "0.8.3",
