@@ -72,7 +72,7 @@ describe('Inspector', () => {
       store.getState().setSelection(['v1']);
     });
     commit('Drill (mm)', 'abc');
-    expect((screen.getByLabelText('Drill (mm)') as HTMLInputElement).value).toBe('0.3');
+    expect(screen.getByLabelText<HTMLInputElement>('Drill (mm)').value).toBe('0.3');
     const input = screen.getByLabelText('Drill (mm)');
     fireEvent.blur(input);
     expect(store.getState().history.past).toHaveLength(0);
