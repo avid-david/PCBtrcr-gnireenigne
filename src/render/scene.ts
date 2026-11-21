@@ -1,4 +1,4 @@
-import { imageToBoard } from '../core/alignment/initialPlacement';
+import { layerTransform } from '../core/alignment/alignment';
 import type { Mat3 } from '../core/geometry/mat3';
 import type { Viewport } from '../core/geometry/viewport';
 import type { ImageId, Layer, LayerId, Project } from '../core/model/project';
@@ -18,16 +18,12 @@ export interface Scene {
   readonly layers: readonly SceneLayer[];
 }
 
-function toSceneLayer(layer: Layer, opacity: number): SceneLayer | null {
-  if (layer.image === null || opacity <= 0) {
+function toSceneLayer(project: Project, layer: Layer, opacity: number): SceneLayer | null {
+  const transform = layerTransform(project, layer.id);
+  if (layer.image === null || transform === null || opacity <= 0) {
     return null;
   }
-  return {
-    layerId: layer.id,
-    imageId: layer.image.id,
-    imageToBoard: imageToBoard(layer.image, layer.mirrored),
-    opacity,
-  };
+  return { layerId: layer.id, imageId: layer.image.id, imageToBoard: transform, opacity };
 }
 
 /**
@@ -39,8 +35,8 @@ export function buildScene(project: Project, view: ViewState): Scene {
   const active = visible.filter((l) => l.id === view.activeLayerId);
   const others = visible.filter((l) => l.id !== view.activeLayerId);
   const layers = [
-    ...active.map((l) => toSceneLayer(l, 1)),
-    ...others.map((l) => toSceneLayer(l, view.overlayOpacity)),
+    ...active.map((l) => toSceneLayer(project, l, 1)),
+    ...others.map((l) => toSceneLayer(project, l, view.overlayOpacity)),
   ].filter((l): l is SceneLayer => l !== null);
   return { viewport: view.viewport, layers };
 }

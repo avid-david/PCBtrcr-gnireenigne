@@ -1,5 +1,5 @@
 import { DEFAULT_VIEWPORT, fitToRect, type ScreenSize, type Viewport } from '../geometry/viewport';
-import { projectBounds } from '../alignment/initialPlacement';
+import { projectBounds } from '../alignment/bounds';
 import type { LayerId, Project } from '../model/project';
 
 /**
