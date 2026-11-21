@@ -80,22 +80,28 @@ function trueErrorMm(project: Project, layerId: LayerId, truth: Mat3): number {
 }
 
 describe('alignment accuracy (M2 acceptance)', () => {
-  it('aligns both photos to < 0.2 mm with 4 corners and 6 matched points', () => {
-    fc.assert(
-      fc.property(clickErrors, (errors) => {
-        const project = clickedProject(errors);
-        const bottom = solveAlignment(project).get('bottom');
-        return (
-          bottom?.status === 'aligned' &&
-          (bottom.rmsMm ?? Number.POSITIVE_INFINITY) < 0.2 &&
-          bottom.fits.every((fit) => !fit.outlier) &&
-          trueErrorMm(project, 'top', TOP_TRUTH) < 0.2 &&
-          trueErrorMm(project, 'bottom', BOTTOM_TRUTH) < 0.2
-        );
-      }),
-      { numRuns: 100 },
-    );
-  });
+  // 100 random click sets, each with a full alignment solve and outlier test: slow under
+  // coverage instrumentation, so this test gets its own time budget.
+  it(
+    'aligns both photos to < 0.2 mm with 4 corners and 6 matched points',
+    { timeout: 60_000 },
+    () => {
+      fc.assert(
+        fc.property(clickErrors, (errors) => {
+          const project = clickedProject(errors);
+          const bottom = solveAlignment(project).get('bottom');
+          return (
+            bottom?.status === 'aligned' &&
+            (bottom.rmsMm ?? Number.POSITIVE_INFINITY) < 0.2 &&
+            bottom.fits.every((fit) => !fit.outlier) &&
+            trueErrorMm(project, 'top', TOP_TRUTH) < 0.2 &&
+            trueErrorMm(project, 'bottom', BOTTOM_TRUTH) < 0.2
+          );
+        }),
+        { numRuns: 100 },
+      );
+    },
+  );
 
   it('reports the measured accuracy for one representative set of clicks', () => {
     const project = clickedProject(

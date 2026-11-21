@@ -72,8 +72,10 @@ Engineering rules: [CLAUDE.md](../CLAUDE.md).
 - Further control points can be vias, holes or corners visible on both photos; matching a point on the
   top and bottom photo aligns the bottom to the top.
 - ≥ 4 points: compute homography (normalised DLT; least-squares for > 4 points).
-- Show per-point residual error and RMS error in mm; highlight outliers.
-- Warped result is cached (recomputed in a Web Worker when points change), never written over the source.
+- Show per-point residual error and RMS error in mm; highlight outliers (studentized residuals,
+  see [ADR 0004](adr/0004-alignment.md)).
+- Photos are warped on the GPU (perspective meshes) as the points change; the source is never
+  modified and no warped copy is stored ([ADR 0004](adr/0004-alignment.md)).
 - Live preview while dragging a control point.
 
 ### F3. Tracing tools

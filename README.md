@@ -3,10 +3,10 @@
 An open-source browser tool for reverse engineering printed circuit boards from photographs: import top
 and bottom photos, align them, trace copper features, and let the tool derive and color the nets.
 
-> **Status:** milestone M1 — import and view top/bottom photos with an adjustable overlay. Alignment
-> (M2) and tracing (M3) come next. See [docs/SPEC.md](docs/SPEC.md#milestones).
+> **Status:** milestone M2 — import top/bottom photos, overlay them and align them in perspective.
+> Tracing (M3) comes next. See [docs/SPEC.md](docs/SPEC.md#milestones).
 
-## Using it (M1)
+## Using it
 
 | Action | How |
 | --- | --- |
@@ -17,8 +17,20 @@ and bottom photos, align them, trace copper features, and let the tool derive an
 | Fit to view | `Home` or **Fit to view** |
 | Overlay | **Overlay opacity** slider: how strongly the inactive layer shows over the active one |
 | Per layer | **Show photo**, **Mirror horizontally** (the bottom photo starts mirrored) |
+| Align mode | **Align** or `A`; `Esc` cancels a half-made match |
 
-Until alignment exists (M2), every photo is shown 100 mm wide so both sides roughly overlap.
+### Aligning the photos
+
+1. Press **Align**, enter the board's width and height in mm and press **Set size**.
+2. On the top photo, click the board's corners: top-left, top-right, bottom-right, bottom-left.
+   The top photo snaps onto the board outline.
+3. Switch to **Matching points** (automatic after the 4th corner). Click a via, hole or corner on one
+   photo; the view hops to the other photo — click the same feature there. Repeat for at least 4
+   features (6+ lets the tool measure accuracy and spot mis-clicks).
+4. The panel shows each point's error in mm, the RMS per layer, and marks outliers in red. Drag a
+   point to adjust it (live preview) or delete it with ×.
+
+Tip: set **Overlay opacity** to 0 % while clicking, so only the active photo is visible.
 
 ## Quick start
 

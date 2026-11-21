@@ -44,9 +44,6 @@ export const scaleEntries = (m: Mat3, k: number): Mat3 => [
   m[8] * k,
 ];
 
-/** Whether the matrix is affine (no perspective row), so it maps parallel lines to parallel lines. */
-export const isAffine = (m: Mat3): boolean => m[6] === 0 && m[7] === 0 && m[8] === 1;
-
 /** Matrix product `a · b`: applying the result equals applying `b` first, then `a`. */
 export function multiply(a: Mat3, b: Mat3): Mat3 {
   const [a0, a1, a2, a3, a4, a5, a6, a7, a8] = a;
