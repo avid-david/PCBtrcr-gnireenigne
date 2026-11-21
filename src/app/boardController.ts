@@ -15,7 +15,7 @@ export interface BoardDeps<P> {
 }
 
 const changed = (a: EditorState, b: EditorState): boolean =>
-  a.project !== b.project || a.view !== b.view;
+  a.project !== b.project || a.view !== b.view || a.align !== b.align;
 
 /** Connects a renderer to the store: draws at most once per frame, only after changes. */
 function connect<P>(renderer: Renderer, deps: BoardDeps<P>): () => void {
@@ -23,12 +23,12 @@ function connect<P>(renderer: Renderer, deps: BoardDeps<P>): () => void {
   let lastScreen: ScreenSize | null = null;
   const draw = () => {
     pending = false;
-    const { project, view } = deps.store.getState();
+    const { project, view, align } = deps.store.getState();
     if (view.screen !== lastScreen) {
       lastScreen = view.screen;
       renderer.resize(view.screen);
     }
-    renderer.render(buildScene(project, view));
+    renderer.render(buildScene({ project, view, align }));
   };
   const request = () => {
     if (!pending) {

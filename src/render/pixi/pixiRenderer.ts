@@ -1,36 +1,55 @@
-import { Application, Container, Matrix, Sprite, Texture } from 'pixi.js';
+import { Application, Container, PerspectiveMesh, Texture } from 'pixi.js';
 import type { Mat3 } from '../../core/geometry/mat3';
+import type { PixelRect } from '../../core/geometry/tiling';
 import type { ScreenSize } from '../../core/geometry/viewport';
 import type { LoadedImage } from '../../core/model/image';
 import type { ImageId } from '../../core/model/project';
 import type { ImageLookup, Renderer } from '../renderer';
 import type { Scene } from '../scene';
+import { MESH_VERTICES, tileCorners } from '../tileQuads';
+import { OverlayLayer } from './overlayLayer';
 
 const BACKGROUND = '#15171a';
 
-/** Our row-major Mat3 → PixiJS matrix (a, b, c, d, tx, ty). Only the affine part is used. */
-const toPixiMatrix = (m: Mat3): Matrix => new Matrix(m[0], m[3], m[1], m[4], m[2], m[5]);
+/** A photo as one perspective mesh per tile; the warp is done on the GPU (docs/adr/0004). */
+interface PhotoNode {
+  readonly container: Container;
+  readonly tiles: readonly { readonly mesh: PerspectiveMesh; readonly rect: PixelRect }[];
+}
 
-function buildImageContainer(image: LoadedImage<ImageBitmap>): Container {
+function buildPhoto(image: LoadedImage<ImageBitmap>): PhotoNode {
   const container = new Container();
-  for (const tile of image.tiles) {
-    const sprite = new Sprite(Texture.from(tile.pixels));
-    sprite.position.set(tile.rect.x, tile.rect.y);
-    container.addChild(sprite);
+  const tiles = image.tiles.map((tile) => {
+    const mesh = new PerspectiveMesh({
+      texture: Texture.from(tile.pixels),
+      verticesX: MESH_VERTICES,
+      verticesY: MESH_VERTICES,
+    });
+    container.addChild(mesh);
+    return { mesh, rect: tile.rect };
+  });
+  return { container, tiles };
+}
+
+/** Places every tile so its corners land where the image → board transform puts them. */
+function placePhoto(photo: PhotoNode, imageToBoard: Mat3): void {
+  for (const { mesh, rect } of photo.tiles) {
+    const [tl, tr, br, bl] = tileCorners(imageToBoard, rect);
+    mesh.setCorners(tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y);
   }
-  return container;
 }
 
 class PixiRenderer implements Renderer {
   private readonly world = new Container();
-  private readonly imageContainers = new Map<ImageId, Container>();
+  private readonly overlay = new OverlayLayer();
+  private readonly photos = new Map<ImageId, PhotoNode>();
   private readonly app: Application;
   private readonly images: ImageLookup<ImageBitmap>;
 
   constructor(app: Application, images: ImageLookup<ImageBitmap>) {
     this.app = app;
     this.images = images;
-    app.stage.addChild(this.world);
+    app.stage.addChild(this.world, this.overlay.root);
   }
 
   render(scene: Scene): void {
@@ -38,14 +57,14 @@ class PixiRenderer implements Renderer {
     this.world.scale.set(scene.viewport.zoom);
     this.world.position.set(scene.viewport.offset.x, scene.viewport.offset.y);
     for (const layer of scene.layers) {
-      const container = this.containerFor(layer.imageId);
-      if (container === undefined) {
-        continue;
+      const photo = this.photoFor(layer.imageId);
+      if (photo !== undefined) {
+        placePhoto(photo, layer.imageToBoard);
+        photo.container.alpha = layer.opacity;
+        this.world.addChild(photo.container);
       }
-      container.setFromMatrix(toPixiMatrix(layer.imageToBoard));
-      container.alpha = layer.opacity;
-      this.world.addChild(container);
     }
+    this.overlay.draw(scene);
     this.app.render();
   }
 
@@ -54,19 +73,20 @@ class PixiRenderer implements Renderer {
   }
 
   forgetImage(id: ImageId): void {
-    this.imageContainers.get(id)?.destroy({ children: true, texture: true, textureSource: true });
-    this.imageContainers.delete(id);
+    this.photos.get(id)?.container.destroy({ children: true, texture: true, textureSource: true });
+    this.photos.delete(id);
   }
 
   destroy(): void {
-    [...this.imageContainers.keys()].forEach((id) => {
+    [...this.photos.keys()].forEach((id) => {
       this.forgetImage(id);
     });
+    this.overlay.destroy();
     this.app.destroy(true, { children: true });
   }
 
-  private containerFor(id: ImageId): Container | undefined {
-    const cached = this.imageContainers.get(id);
+  private photoFor(id: ImageId): PhotoNode | undefined {
+    const cached = this.photos.get(id);
     if (cached !== undefined) {
       return cached;
     }
@@ -74,9 +94,9 @@ class PixiRenderer implements Renderer {
     if (image === undefined) {
       return undefined;
     }
-    const container = buildImageContainer(image);
-    this.imageContainers.set(id, container);
-    return container;
+    const photo = buildPhoto(image);
+    this.photos.set(id, photo);
+    return photo;
   }
 }
 

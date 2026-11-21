@@ -1,3 +1,4 @@
+import type { PointRef } from '../core/model/points';
 import type { Corner, LayerId, Project } from '../core/model/project';
 import { nextCorner, type AlignState } from './align';
 
@@ -37,4 +38,14 @@ export function alignHint(project: Project, state: AlignState, activeLayerId: La
     return `Import the ${layerName(project, activeLayerId).toLowerCase()} photo first.`;
   }
   return modeHint(project, state, activeLayerId);
+}
+
+const CORNER_LABELS: Readonly<Record<Corner, string>> = { tl: 'TL', tr: 'TR', br: 'BR', bl: 'BL' };
+
+/** Short label of a point: the corner, or the match's number in the list. */
+export function pointLabel(project: Project, ref: PointRef): string {
+  if (ref.kind === 'corner') {
+    return CORNER_LABELS[ref.corner];
+  }
+  return String(project.matches.findIndex((m) => m.id === ref.matchId) + 1);
 }
