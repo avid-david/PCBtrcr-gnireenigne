@@ -1,11 +1,10 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import { textBox } from '../../core/model/text';
 import type { Rect } from '../../core/geometry/rect';
 import { DIMMED_ALPHA, type FeatureDrawable } from '../featureScene';
-import type { TextItem } from '../textItems';
+import { textTransform, type TextItem } from '../textItems';
 import type { Scene } from '../scene';
 import type { ToolOverlay } from '../../tools/tool';
-import { drawFeature, type Paint } from './featureDrawing';
+import { drawFeature, drawGhostFeature, type Paint } from './featureDrawing';
 
 const SHOW_ALL = { copper: true, print: true };
 const GHOST = { color: 0xffffff, alpha: 0.45, padColors: [], show: SHOW_ALL };
@@ -49,13 +48,7 @@ export class FeatureLayer {
 
   /** Updates the text objects to the items, reusing them by key so unchanged ones keep their glyphs. */
   private writeTexts(items: readonly TextItem[]): void {
-    const keep = new Set(items.map((i) => i.key));
-    for (const [key, text] of this.texts) {
-      if (!keep.has(key)) {
-        text.destroy();
-        this.texts.delete(key);
-      }
-    }
+    removeTexts(this.texts, new Set(items.map((i) => i.key)));
     for (const item of items) {
       const text = this.texts.get(item.key) ?? this.addText(item.key);
       placeText(text, item);
@@ -77,19 +70,37 @@ export class FeatureLayer {
   }
 }
 
-/** Sets a text's content, colour and placement; mirrored text is flipped about its own centre. */
+/** Destroys the text objects whose keys are no longer listed. */
+function removeTexts(texts: Map<string, Text>, keep: ReadonlySet<string>): void {
+  [...texts.keys()]
+    .filter((key) => !keep.has(key))
+    .forEach((key) => {
+      texts.get(key)?.destroy();
+      texts.delete(key);
+    });
+}
+
+// Changing a text's content or colour re-renders its glyphs, so it is only done when they differ.
+const setContent = (text: Text, value: string) => {
+  if (text.text !== value) {
+    text.text = value;
+  }
+};
+
+const setColor = (text: Text, color: number) => {
+  if (text.style.fill !== color) {
+    text.style.fill = color;
+  }
+};
+
+/** Sets a text's content, colour and placement (mirrored text is flipped about its own box). */
 function placeText(text: Text, item: TextItem): void {
-  if (text.text !== item.text) {
-    text.text = item.text;
-  }
-  // Changing text or colour re-renders the glyphs, so only do it when they differ.
-  if (text.style.fill !== item.color) {
-    text.style.fill = item.color;
-  }
+  setContent(text, item.text);
+  setColor(text, item.color);
   text.alpha = item.alpha;
-  const k = item.heightMm / FONT_PX;
-  text.scale.set(item.mirrored ? -k : k, k);
-  text.position.set(item.mirrored ? item.at.x + text.width : item.at.x, item.at.y);
+  const t = textTransform(item, text.getLocalBounds().width, FONT_PX);
+  text.scale.set(t.scaleX, t.scaleY);
+  text.position.set(t.x, t.y);
 }
 
 /** All features, inactive-layer ones faint. Only called when the feature list changed. */
@@ -120,20 +131,11 @@ function drawRubberBand(g: Graphics, band: ToolOverlay['rubberBand']): void {
   }
 }
 
-/** A feature about to be placed; a text shows the box it will fill. */
+/** A feature about to be placed. */
 function drawGhost(g: Graphics, ghost: ToolOverlay['ghost']): void {
-  if (ghost === null) {
-    return;
+  if (ghost !== null) {
+    drawGhostFeature(g, ghost, { ...GHOST, points: [] });
   }
-  if (ghost.kind === 'text' || ghost.kind === 'silkText') {
-    const box = textBox(ghost.at, ghost.text, ghost.heightMm);
-    g.rect(box.minX, box.minY, box.maxX - box.minX, box.maxY - box.minY).fill({
-      color: GHOST.color,
-      alpha: GHOST.alpha,
-    });
-    return;
-  }
-  drawFeature(g, ghost, { ...GHOST, points: [] });
 }
 
 /** A ring of constant screen size around the anchor the cursor would snap to. */

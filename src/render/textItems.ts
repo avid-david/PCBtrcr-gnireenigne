@@ -72,3 +72,18 @@ export function textItemsOf(
   const bottom = 'layerId' in f && f.layerId !== null && options.bottomLayers.has(f.layerId);
   return texts[f.kind]?.(f, options.alpha, bottom) ?? [];
 }
+
+/**
+ * Scale and position of a text object whose glyphs are `localWidth` wide at `fontPx`: scaled to
+ * the item's height, and mirrored about its own box (it then extends left from its x).
+ */
+export function textTransform(item: TextItem, localWidth: number, fontPx: number) {
+  const k = item.heightMm / fontPx;
+  const width = localWidth * k;
+  return {
+    scaleX: item.mirrored ? -k : k,
+    scaleY: k,
+    x: item.mirrored ? item.at.x + width : item.at.x,
+    y: item.at.y,
+  };
+}

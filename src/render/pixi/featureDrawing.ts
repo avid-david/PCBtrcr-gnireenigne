@@ -1,6 +1,7 @@
 import type { Graphics } from 'pixi.js';
 import type { Vec2 } from '../../core/geometry/vec2';
 import { padPolygon, toBoard } from '../../core/model/component';
+import { textBox } from '../../core/model/text';
 import type { Component, Feature, FeatureKindName } from '../../core/model/features';
 import { SILK_COLOR } from '../textItems';
 
@@ -118,6 +119,27 @@ const drawers: { readonly [K in FeatureKindName]: Drawer<Extract<Feature, { kind
   text: () => undefined,
   silkText: () => undefined,
 };
+
+/** A text being placed shows the box it will fill (its glyphs are drawn only once placed). */
+const textGhost = (g: Graphics, f: { at: Vec2; text: string; heightMm: number }, paint: Paint) => {
+  const box = textBox(f.at, f.text, f.heightMm);
+  g.rect(box.minX, box.minY, box.maxX - box.minX, box.maxY - box.minY).fill({
+    color: paint.color,
+    alpha: paint.alpha,
+  });
+};
+
+const ghostDrawers: Partial<{
+  readonly [K in FeatureKindName]: Drawer<Extract<Feature, { kind: K }>>;
+}> = {
+  text: textGhost,
+  silkText: textGhost,
+};
+
+/** Draws a feature about to be placed (as itself, or as the box of a text). */
+export function drawGhostFeature(g: Graphics, f: Feature, paint: Paint): void {
+  ((ghostDrawers[f.kind] as Drawer<Feature> | undefined) ?? drawFeature)(g, f, paint);
+}
 
 /** Draws one feature into `g`. */
 export function drawFeature(g: Graphics, f: Feature, paint: Paint): void {

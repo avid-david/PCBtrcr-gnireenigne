@@ -18,7 +18,7 @@ import {
   type LayerContent,
 } from '../core/view/viewState';
 import { featureScene, NO_NET_COLOR } from './featureScene';
-import { NOTE_COLOR, SILK_COLOR } from './textItems';
+import { NOTE_COLOR, SILK_COLOR, textTransform } from './textItems';
 
 const note: Feature = {
   kind: 'text',
@@ -128,5 +128,27 @@ describe('feature scene', () => {
     const first = featureScene(board, view);
     expect(featureScene(board, { ...view, hiddenContent: [] })).toBe(first);
     expect(featureScene(board, hide('top', 'copper'))).not.toBe(first);
+  });
+});
+
+describe('text placement', () => {
+  const item = {
+    key: 'k',
+    text: 'AB',
+    at: { x: 10, y: 5 },
+    heightMm: 2,
+    color: 0,
+    alpha: 1,
+    mirrored: false,
+  };
+
+  it('scales glyphs to the height, and mirrors about the text box', () => {
+    expect(textTransform(item, 100, 50)).toEqual({ scaleX: 0.04, scaleY: 0.04, x: 10, y: 5 });
+    expect(textTransform({ ...item, mirrored: true }, 100, 50)).toEqual({
+      scaleX: -0.04,
+      scaleY: 0.04,
+      x: 14,
+      y: 5,
+    });
   });
 });
