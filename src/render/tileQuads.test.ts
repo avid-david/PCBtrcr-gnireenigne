@@ -3,7 +3,7 @@ import { BOTTOM_TRUTH, TOP_TRUTH, pixelsToBoard } from '../core/alignment/fixtur
 import { apply, type Mat3 } from '../core/geometry/mat3';
 import type { PixelRect } from '../core/geometry/tiling';
 import type { Vec2 } from '../core/geometry/vec2';
-import { MESH_VERTICES, flatCorners, tileCorners } from './tileQuads';
+import { MESH_VERTICES, flatCorners, isTileDrawable, tileCorners } from './tileQuads';
 
 /**
  * Largest distance (mm) between the exact projective mapping and the mesh: grid vertices are
@@ -52,5 +52,19 @@ describe('tile meshes', () => {
     const imageToBoard = pixelsToBoard(TOP_TRUTH);
     const mmPerPixel = Math.hypot(imageToBoard[0], imageToBoard[3]);
     expect(meshErrorMm(imageToBoard, tile, 2)).toBeGreaterThan(mmPerPixel);
+  });
+});
+
+describe('isTileDrawable', () => {
+  const rect: PixelRect = { x: 0, y: 0, width: 100, height: 100 };
+  it('accepts tiles fully in front of the horizon', () => {
+    expect(isTileDrawable(pixelsToBoard(TOP_TRUTH), tile)).toBe(true);
+    expect(isTileDrawable([1, 0, 0, 0, 1, 0, 0, 0, 1], rect)).toBe(true);
+  });
+
+  it('rejects tiles the horizon crosses or lies in front of', () => {
+    const horizonAtX50: Mat3 = [1, 0, 0, 0, 1, 0, -0.02, 0, 1];
+    expect(isTileDrawable(horizonAtX50, rect)).toBe(false);
+    expect(isTileDrawable(horizonAtX50, { x: 0, y: 0, width: 40, height: 100 })).toBe(true);
   });
 });

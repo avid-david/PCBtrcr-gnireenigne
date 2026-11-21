@@ -6,7 +6,7 @@ import type { LoadedImage } from '../../core/model/image';
 import type { ImageId } from '../../core/model/project';
 import type { ImageLookup, Renderer } from '../renderer';
 import type { Scene } from '../scene';
-import { MESH_VERTICES, tileCorners } from '../tileQuads';
+import { MESH_VERTICES, isTileDrawable, tileCorners } from '../tileQuads';
 import { OverlayLayer } from './overlayLayer';
 
 const BACKGROUND = '#15171a';
@@ -34,8 +34,11 @@ function buildPhoto(image: LoadedImage<ImageBitmap>): PhotoNode {
 /** Places every tile so its corners land where the image → board transform puts them. */
 function placePhoto(photo: PhotoNode, imageToBoard: Mat3): void {
   for (const { mesh, rect } of photo.tiles) {
-    const [tl, tr, br, bl] = tileCorners(imageToBoard, rect);
-    mesh.setCorners(tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y);
+    mesh.visible = isTileDrawable(imageToBoard, rect);
+    if (mesh.visible) {
+      const [tl, tr, br, bl] = tileCorners(imageToBoard, rect);
+      mesh.setCorners(tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y);
+    }
   }
 }
 
