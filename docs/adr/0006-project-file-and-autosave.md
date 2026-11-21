@@ -39,7 +39,14 @@ nothing throws. Rules:
 **Opening.** The archive is unpacked and validated first; then photos are decoded with their saved
 ids. A missing, unreadable or wrong-sized photo does not block opening: the project opens, the
 status bar names the photo, and its corner clicks and matches stay (they refer to its pixels), so
-importing it again restores the alignment. Loading starts a fresh undo history and bumps the
+importing it again restores the alignment. A photo that is in the file but cannot be shown keeps
+its original bytes in the registry (with no tiles), so saving again never drops it from the file.
+
+**Unpacking limits.** Files may come from anyone, so unpacking reads only `project.json` and
+`images/*` and checks the sizes each entry declares before inflating it: at most 64 MiB for
+`project.json`, 256 MiB per photo and 768 MiB in total, otherwise the file is refused as too large.
+fflate inflates an entry into a buffer of exactly its declared size, so a zip bomb cannot grow past
+these limits. Loading starts a fresh undo history and bumps the
 project generation, so a slower import from the previous project is dropped.
 
 **Saving** downloads `<name>.pcbrt` (works in every supported browser and is testable). Writing back

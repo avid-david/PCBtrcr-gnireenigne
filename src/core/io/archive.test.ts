@@ -1,6 +1,7 @@
-import { strToU8, unzipSync, zipSync } from 'fflate';
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import {
+  ARCHIVE_LIMITS,
   describeArchiveError,
   photoPath,
   PROJECT_ENTRY,
@@ -8,6 +9,24 @@ import {
   writeArchive,
   type ArchiveError,
 } from './archive';
+
+/**
+ * Rewrites the uncompressed size an entry declares in the zip's central directory, which is what
+ * the reader trusts when allocating; this fakes a huge entry without building one.
+ */
+function declareSize<T extends Uint8Array>(zip: T, name: string, size: number): T {
+  const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
+  for (let at = 0; at + 46 <= zip.length; at++) {
+    if (view.getUint32(at, true) !== 0x02014b50) {
+      continue;
+    }
+    const nameLength = view.getUint16(at + 28, true);
+    if (strFromU8(zip.subarray(at + 46, at + 46 + nameLength)) === name) {
+      view.setUint32(at + 24, size, true);
+    }
+  }
+  return zip;
+}
 
 const photo = (imageId: string, mimeType: string, size: number) => ({
   imageId,
@@ -47,7 +66,30 @@ describe('project archive', () => {
     expect(readArchive(bytes)).toEqual({ ok: false, error: { kind: 'no-project' } });
   });
 
-  it.each<ArchiveError>([{ kind: 'not-a-zip' }, { kind: 'no-project' }])(
+  it('refuses entries that would unpack beyond the limits, before inflating them', () => {
+    const huge = declareSize(
+      zipSync({ [PROJECT_ENTRY]: strToU8('{}') }),
+      PROJECT_ENTRY,
+      ARCHIVE_LIMITS.projectBytes + 1,
+    );
+    expect(readArchive(huge)).toEqual({ ok: false, error: { kind: 'too-large' } });
+    const photos = Object.fromEntries(
+      ['a', 'b', 'c', 'd'].map((id) => [`images/${id}.png`, [strToU8(id), { level: 0 }] as const]),
+    );
+    let many = zipSync({ [PROJECT_ENTRY]: strToU8('{}'), ...photos });
+    for (const id of ['a', 'b', 'c', 'd']) {
+      many = declareSize(many, `images/${id}.png`, ARCHIVE_LIMITS.photoBytes);
+    }
+    expect(readArchive(many)).toEqual({ ok: false, error: { kind: 'too-large' } });
+  });
+
+  it('does not unpack unknown entries, however large they claim to be', () => {
+    const zip = zipSync({ [PROJECT_ENTRY]: strToU8('{}'), 'big.bin': strToU8('x') });
+    const result = readArchive(declareSize(zip, 'big.bin', 2 ** 31));
+    expect(result.ok && result.value.projectJson).toBe('{}');
+  });
+
+  it.each<ArchiveError>([{ kind: 'not-a-zip' }, { kind: 'no-project' }, { kind: 'too-large' }])(
     'describes $kind for the user',
     (error) => {
       expect(describeArchiveError(error)).toMatch(/project/);
