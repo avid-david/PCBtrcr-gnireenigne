@@ -2,7 +2,7 @@ import type { Project } from '../model/project';
 import { err, ok, type Result } from '../result';
 import { migrate } from './migrations';
 import { brokenReference } from './references';
-import { documentV2 } from './schemaV2';
+import { documentV2, projectV2 } from './schemaV2';
 
 /** The schema version this build writes, and the newest it can read. */
 export const CURRENT_SCHEMA_VERSION = 2;
@@ -14,9 +14,15 @@ export type LoadError =
   | { readonly kind: 'invalid'; readonly path: string; readonly message: string }
   | { readonly kind: 'broken-reference'; readonly message: string };
 
-/** `project.json` for a project: plain data with the schema version on top. */
+/**
+ * `project.json` for a project: plain data with the schema version on top. Keys are written in
+ * the schema's order, so the same project always gives the same text, however its features were
+ * created (a pad placed now or loaded from a file).
+ */
 export function serializeProject(project: Project): string {
-  return JSON.stringify({ schemaVersion: CURRENT_SCHEMA_VERSION, project }, null, 2);
+  const canonical = projectV2.safeParse(project);
+  const data = canonical.success ? canonical.data : project;
+  return JSON.stringify({ schemaVersion: CURRENT_SCHEMA_VERSION, project: data }, null, 2);
 }
 
 function parseJson(text: string): Result<unknown, LoadError> {

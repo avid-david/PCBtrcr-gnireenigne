@@ -242,3 +242,16 @@ describe('migrations', () => {
     expect(migrate('v3', 3, steps)).toBe('v3');
   });
 });
+
+describe('canonical file text', () => {
+  it('writes the same text however the keys of a feature were ordered', () => {
+    const v = via('v1', { x: 1, y: 2 });
+    const reordered = { padMm: v.padMm, drillMm: v.drillMm, at: v.at, id: v.id, kind: v.kind };
+    expect(serializeProject(withFeatures([reordered]))).toBe(serializeProject(withFeatures([v])));
+  });
+
+  it('still writes a project the schema would refuse, rather than lose it', () => {
+    const broken = withFeatures([{ ...via('v1', { x: 0, y: 0 }), padMm: -1 }]);
+    expect(serializeProject(broken)).toContain('"padMm": -1');
+  });
+});
