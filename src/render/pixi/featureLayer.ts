@@ -27,46 +27,56 @@ export class FeatureLayer {
   draw(scene: Scene): void {
     if (scene.features !== this.drawn) {
       this.drawn = scene.features;
-      this.copper.clear();
-      for (const d of scene.features) {
-        drawFeature(this.copper, d.feature, {
-          color: d.color,
-          alpha: d.dimmed ? DIMMED_ALPHA : 1,
-          points: d.points,
-        });
-      }
+      drawCopper(this.copper.clear(), scene.features);
     }
-    this.drawTool(scene.toolOverlay, scene.viewport.zoom);
-  }
-
-  /** Rubber band, ghost, snap ring and selection box: small, so redrawn every frame. */
-  private drawTool(overlay: ToolOverlay, zoom: number): void {
     const g = this.tool.clear();
-    const pixel = 1 / zoom;
-    if (overlay.rubberBand !== null) {
-      drawFeature(
-        g,
-        { kind: 'trace', id: '', layerId: '', widthMm: overlay.rubberBand.widthMm, vertices: [] },
-        {
-          ...GHOST,
-          points: overlay.rubberBand.points,
-        },
-      );
-    }
-    if (overlay.ghost !== null) {
-      drawFeature(g, overlay.ghost, { ...GHOST, points: [] });
-    }
-    if (overlay.snapTarget !== null) {
-      g.circle(overlay.snapTarget.x, overlay.snapTarget.y, SNAP_RING_PX * pixel).stroke({
-        width: 2 * pixel,
-        color: 0xffffff,
-      });
-    }
-    drawBox(g, overlay.box, pixel);
+    const pixel = 1 / scene.viewport.zoom;
+    drawRubberBand(g, scene.toolOverlay.rubberBand);
+    drawGhost(g, scene.toolOverlay.ghost);
+    drawSnapRing(g, scene.toolOverlay.snapTarget, pixel);
+    drawBox(g, scene.toolOverlay.box, pixel);
   }
 
   destroy(): void {
     this.root.destroy({ children: true });
+  }
+}
+
+/** All copper, inactive-layer features faint. Only called when the feature list changed. */
+function drawCopper(g: Graphics, features: readonly FeatureDrawable[]): void {
+  for (const d of features) {
+    drawFeature(g, d.feature, {
+      color: d.color,
+      alpha: d.dimmed ? DIMMED_ALPHA : 1,
+      points: d.points,
+    });
+  }
+}
+
+/** The trace being drawn, as a ghost trace through its points and the cursor. */
+function drawRubberBand(g: Graphics, band: ToolOverlay['rubberBand']): void {
+  if (band !== null) {
+    const trace = {
+      kind: 'trace',
+      id: '',
+      layerId: '',
+      widthMm: band.widthMm,
+      vertices: [],
+    } as const;
+    drawFeature(g, trace, { ...GHOST, points: band.points });
+  }
+}
+
+function drawGhost(g: Graphics, ghost: ToolOverlay['ghost']): void {
+  if (ghost !== null) {
+    drawFeature(g, ghost, { ...GHOST, points: [] });
+  }
+}
+
+/** A ring of constant screen size around the anchor the cursor would snap to. */
+function drawSnapRing(g: Graphics, at: ToolOverlay['snapTarget'], pixel: number): void {
+  if (at !== null) {
+    g.circle(at.x, at.y, SNAP_RING_PX * pixel).stroke({ width: 2 * pixel, color: 0xffffff });
   }
 }
 
