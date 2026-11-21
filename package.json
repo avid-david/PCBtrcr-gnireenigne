@@ -1,6 +1,6 @@
 {
   "name": "pcb-reverse-tracer",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Reverse engineer printed circuit boards from photographs.",
   "license": "MIT",
