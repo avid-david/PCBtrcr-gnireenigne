@@ -197,3 +197,16 @@ describe('align hint', () => {
     expect(alignHint(project, dragging, 'top')).toBe('Release to place the point.');
   });
 });
+
+describe('previewProject', () => {
+  it('returns the same object for the same drag step, so alignment solves are shared', () => {
+    const project = alignedTopProject();
+    const ctx = { project, activeLayerId: 'top', newId: () => 'x' };
+    const grabbed = alignStep(INITIAL_ALIGN, down(cornerPosition(board, 'tr')), ctx);
+    const moved = alignStep(grabbed.state, { type: 'pointermove', board: { x: 79, y: 1 } }, ctx);
+    expect(previewProject(project, moved.state)).toBe(previewProject(project, moved.state));
+    expect(previewProject(alignedTopProject(), moved.state)).not.toBe(
+      previewProject(project, moved.state),
+    );
+  });
+});

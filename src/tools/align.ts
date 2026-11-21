@@ -153,6 +153,22 @@ export function alignStep(state: AlignState, event: AlignEvent, ctx: AlignContex
   return (handlers[event.type] as (e: AlignEvent) => AlignResult)(event);
 }
 
-/** The project as it would be if the dragged point were dropped now (for live preview). */
-export const previewProject = (project: Project, state: AlignState): Project =>
-  state.drag === null ? project : movePoint(project, state.drag.ref, state.drag.px);
+const previews = new WeakMap<AlignState, { readonly from: Project; readonly preview: Project }>();
+
+/**
+ * The project as it would be if the dragged point were dropped now (for live preview). The
+ * same inputs give the same object, so the canvas and the panel share one cached alignment
+ * solve per drag step instead of solving twice.
+ */
+export function previewProject(project: Project, state: AlignState): Project {
+  if (state.drag === null) {
+    return project;
+  }
+  const cached = previews.get(state);
+  if (cached?.from === project) {
+    return cached.preview;
+  }
+  const preview = movePoint(project, state.drag.ref, state.drag.px);
+  previews.set(state, { from: project, preview });
+  return preview;
+}
