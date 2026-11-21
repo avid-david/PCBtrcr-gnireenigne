@@ -59,7 +59,7 @@ export default defineConfig([
   {
     // Test suites are long lists of small cases; the per-function limit would only
     // force arbitrary splitting of `describe` blocks (see docs/adr/0001-stack.md).
-    files: ['**/*.test.{ts,tsx}', 'e2e/**'],
+    files: ['**/*.test.{ts,tsx}', '**/*.test-support.ts', 'e2e/**'],
     rules: { 'max-lines-per-function': 'off' },
   },
   {

@@ -1,0 +1,46 @@
+import { imageToBoard } from '../core/alignment/initialPlacement';
+import type { Mat3 } from '../core/geometry/mat3';
+import type { Viewport } from '../core/geometry/viewport';
+import type { ImageId, Layer, LayerId, Project } from '../core/model/project';
+import { isPhotoVisible, type ViewState } from '../core/view/viewState';
+
+/** One photo to draw: which image, where it sits in board space and how opaque it is. */
+export interface SceneLayer {
+  readonly layerId: LayerId;
+  readonly imageId: ImageId;
+  readonly imageToBoard: Mat3;
+  readonly opacity: number;
+}
+
+/** Everything a renderer needs for one frame. Layers are ordered back to front. */
+export interface Scene {
+  readonly viewport: Viewport;
+  readonly layers: readonly SceneLayer[];
+}
+
+function toSceneLayer(layer: Layer, opacity: number): SceneLayer | null {
+  if (layer.image === null || opacity <= 0) {
+    return null;
+  }
+  return {
+    layerId: layer.id,
+    imageId: layer.image.id,
+    imageToBoard: imageToBoard(layer.image, layer.mirrored),
+    opacity,
+  };
+}
+
+/**
+ * The active layer is drawn opaque at the back; the other layers are drawn over it with the
+ * overlay opacity (SPEC "Layers and overlay"). Hidden photos are left out.
+ */
+export function buildScene(project: Project, view: ViewState): Scene {
+  const visible = project.layers.filter((l) => isPhotoVisible(view, l.id));
+  const active = visible.filter((l) => l.id === view.activeLayerId);
+  const others = visible.filter((l) => l.id !== view.activeLayerId);
+  const layers = [
+    ...active.map((l) => toSceneLayer(l, 1)),
+    ...others.map((l) => toSceneLayer(l, view.overlayOpacity)),
+  ].filter((l): l is SceneLayer => l !== null);
+  return { viewport: view.viewport, layers };
+}

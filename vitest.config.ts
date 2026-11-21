@@ -7,6 +7,7 @@ export default defineConfig({
     // Determinism: tests never depend on wall-clock order or leaked state.
     sequence: { shuffle: false },
     restoreMocks: true,
+    setupFiles: ['./vitest.setup.ts'],
     projects: [
       {
         extends: true,
@@ -28,8 +29,16 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      // main.tsx only mounts React into the DOM; it is covered by the Playwright smoke test.
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/app/main.tsx', 'src/**/*.d.ts'],
+      // Excluded files need a real browser (DOM mounting, WebGL, createImageBitmap); the
+      // Playwright e2e tests cover them. See docs/adr/0003-image-display.md.
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.test-support.ts',
+        'src/**/*.d.ts',
+        'src/app/main.tsx',
+        'src/render/pixi/**',
+        'src/platform/browserImage.ts',
+      ],
       reporter: ['text', 'json', 'html'],
       thresholds: {
         lines: 75,

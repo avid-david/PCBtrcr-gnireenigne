@@ -19,8 +19,10 @@ These rules apply to every change, by Claude or by humans. The product spec live
 ```
 src/
   core/       Pure domain logic. NO DOM, NO React, NO PixiJS, NO browser APIs.
-    geometry/     vectors, transforms, homography, hit-testing
-    model/        Project, Layer, Feature types, Net, ids
+    geometry/     vectors, transforms, homography, viewport, tiling, hit-testing
+    model/        Project, Layer, Feature types, Net, ids, image metadata
+    alignment/    image pixels → board mm (the only place pixels are converted)
+    view/         view state: active layer, viewport, overlay (not saved, not commands)
     connectivity/ net derivation (union-find)
     commands/     undoable commands + history
     footprints/   footprint schema + parametric generators
@@ -33,6 +35,7 @@ src/
 ```
 
 - Outside `src/`: `scripts/` holds repo tooling (e.g. the CRAP check), `e2e/` the Playwright tests.
+- Shared test helpers are named `*.test-support.ts`; every tool treats them as test code.
 - `core` imports nothing from other `src/` folders. `tools` may import `core`. `render` and `ui` may import
   `core` and `tools`. Only `app` knows about everything. Enforce with dependency-cruiser in CI.
 - **All model mutations go through commands** (`execute` / `undo`). No direct mutation from UI or tools.
