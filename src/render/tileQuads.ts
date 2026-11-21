@@ -23,17 +23,19 @@ export function tileCorners(imageToBoard: Mat3, rect: PixelRect): [Vec2, Vec2, V
 }
 
 /**
- * Whether the whole tile lies in front of the transform's horizon (projective divisor > 0).
- * The divisor is linear in x and y, so checking the 4 corners covers the tile. Beyond the
- * horizon points flip through infinity: such tiles (possible in a wild preview while dragging
- * a point) are skipped rather than drawn as huge folded triangles.
+ * Whether the transform's horizon (projective divisor = 0) stays clear of the tile. The divisor
+ * is linear in x and y, so the tile is clear exactly when it has the same, non-zero sign at all
+ * 4 corners. Its sign itself means nothing (a homography is only defined up to scale, including
+ * −1). A tile the horizon crosses has points that flip through infinity (possible in a wild
+ * preview while dragging a point); it is skipped rather than drawn as huge folded triangles.
  */
 export function isTileDrawable(imageToBoard: Mat3, rect: PixelRect): boolean {
   const divisor = (x: number, y: number) =>
     imageToBoard[6] * x + imageToBoard[7] * y + imageToBoard[8];
   const xs = [rect.x, rect.x + rect.width];
   const ys = [rect.y, rect.y + rect.height];
-  return xs.every((x) => ys.every((y) => divisor(x, y) > 0));
+  const signs = xs.flatMap((x) => ys.map((y) => Math.sign(divisor(x, y))));
+  return signs.every((s) => s === 1) || signs.every((s) => s === -1);
 }
 
 /** The corners as the flat list `setCorners` expects. */

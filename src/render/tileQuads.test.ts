@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BOTTOM_TRUTH, TOP_TRUTH, pixelsToBoard } from '../core/alignment/fixtures.test-support';
-import { apply, type Mat3 } from '../core/geometry/mat3';
+import { apply, scaleEntries, type Mat3 } from '../core/geometry/mat3';
 import type { PixelRect } from '../core/geometry/tiling';
 import type { Vec2 } from '../core/geometry/vec2';
 import { MESH_VERTICES, flatCorners, isTileDrawable, tileCorners } from './tileQuads';
@@ -62,9 +62,19 @@ describe('isTileDrawable', () => {
     expect(isTileDrawable([1, 0, 0, 0, 1, 0, 0, 0, 1], rect)).toBe(true);
   });
 
-  it('rejects tiles the horizon crosses or lies in front of', () => {
+  it('rejects tiles the horizon crosses or touches', () => {
     const horizonAtX50: Mat3 = [1, 0, 0, 0, 1, 0, -0.02, 0, 1];
     expect(isTileDrawable(horizonAtX50, rect)).toBe(false);
     expect(isTileDrawable(horizonAtX50, { x: 0, y: 0, width: 40, height: 100 })).toBe(true);
+    expect(isTileDrawable(horizonAtX50, { x: 0, y: 0, width: 50, height: 100 })).toBe(false);
+  });
+
+  it('accepts tiles wholly on the negative side: the overall sign of a homography is arbitrary', () => {
+    const horizonAtX50: Mat3 = [1, 0, 0, 0, 1, 0, -0.02, 0, 1];
+    expect(isTileDrawable(horizonAtX50, { x: 60, y: 0, width: 40, height: 100 })).toBe(true);
+    const negated = scaleEntries(horizonAtX50, -1);
+    expect(isTileDrawable(negated, { x: 0, y: 0, width: 40, height: 100 })).toBe(true);
+    const corners = tileCorners(horizonAtX50, { x: 60, y: 0, width: 40, height: 100 });
+    expect(corners.every((c) => Number.isFinite(c.x) && Number.isFinite(c.y))).toBe(true);
   });
 });
