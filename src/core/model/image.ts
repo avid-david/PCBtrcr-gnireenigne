@@ -19,10 +19,12 @@ export interface ImageTile<P> {
   readonly pixels: P;
 }
 
-/** A decoded photo: its model metadata plus the tiles a renderer draws. */
+/** A decoded photo: its model metadata, the tiles a renderer draws and the original file bytes. */
 export interface LoadedImage<P> {
   readonly image: SourceImage;
   readonly tiles: readonly ImageTile<P>[];
+  /** The file exactly as imported, so saving a project keeps the photo unchanged (docs/adr/0006). */
+  readonly bytes: Uint8Array;
 }
 
 /** Checks the file type before decoding. */

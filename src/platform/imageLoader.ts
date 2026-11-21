@@ -23,13 +23,20 @@ export interface Decoded<P> {
 /** Platform operations the loader needs; the browser versions live in browserImage.ts. */
 export interface ImageCodec<F extends ImageFile, P> {
   decode(file: F): Promise<Decoded<P>>;
+  read(file: F): Promise<Uint8Array>;
   crop(pixels: P, rect: PixelRect): Promise<P>;
   release(pixels: P): void;
   newId(): string;
 }
 
+export interface LoadOptions {
+  /** Keeps the id a saved project gave the photo, instead of a new one. */
+  readonly imageId?: string;
+}
+
 export type ImageLoader<F extends ImageFile, P> = (
   file: F,
+  options?: LoadOptions,
 ) => Promise<Result<LoadedImage<P>, ImageLoadError>>;
 
 const reasonOf = (cause: unknown): string =>
@@ -38,9 +45,10 @@ const reasonOf = (cause: unknown): string =>
 async function decodeSafely<F extends ImageFile, P>(
   codec: ImageCodec<F, P>,
   file: F,
-): Promise<Result<Decoded<P>, ImageLoadError>> {
+): Promise<Result<Decoded<P> & { bytes: Uint8Array }, ImageLoadError>> {
   try {
-    return ok(await codec.decode(file));
+    const [decoded, bytes] = await Promise.all([codec.decode(file), codec.read(file)]);
+    return ok({ ...decoded, bytes });
   } catch (cause) {
     return err({ kind: 'decode-failed', reason: reasonOf(cause) });
   }
@@ -71,7 +79,7 @@ async function cutTiles<P>(
 export function createImageLoader<F extends ImageFile, P>(
   codec: ImageCodec<F, P>,
 ): ImageLoader<F, P> {
-  return async (file) => {
+  return async (file, options = {}) => {
     const type = checkImageType(file.type);
     if (!type.ok) {
       return type;
@@ -87,13 +95,13 @@ export function createImageLoader<F extends ImageFile, P>(
       return size;
     }
     const image = {
-      id: codec.newId(),
+      id: options.imageId ?? codec.newId(),
       fileName: file.name,
       mimeType: file.type,
       widthPx,
       heightPx,
     };
     const tiles = await cutTiles(codec, decoded.value);
-    return tiles.ok ? ok({ image, tiles: tiles.value }) : tiles;
+    return tiles.ok ? ok({ image, tiles: tiles.value, bytes: decoded.value.bytes }) : tiles;
   };
 }

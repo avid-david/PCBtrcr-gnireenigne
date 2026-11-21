@@ -8,6 +8,7 @@ const loaded = (id: string): LoadedImage<string> => ({
     { rect: { x: 0, y: 0, width: 1, height: 1 }, pixels: `${id}-tile0` },
     { rect: { x: 1, y: 0, width: 1, height: 1 }, pixels: `${id}-tile1` },
   ],
+  bytes: new Uint8Array(),
 });
 
 describe('image registry', () => {
@@ -33,6 +34,22 @@ describe('image registry', () => {
     registry.add(loaded('b'));
     registry.remove('b');
     expect(listener).toHaveBeenCalledOnce();
+  });
+
+  it('adding an image under a stored id frees the old one first', () => {
+    const release = vi.fn();
+    const registry = createImageRegistry<string>(release);
+    const listener = vi.fn();
+    registry.onRemove(listener);
+    const first = loaded('a');
+    registry.add(first);
+    registry.add(first);
+    expect(release).not.toHaveBeenCalled();
+    const second = loaded('a');
+    registry.add(second);
+    expect(release).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenCalledWith('a');
+    expect(registry.get('a')).toBe(second);
   });
 
   it('retainOnly removes images that are not kept', () => {
