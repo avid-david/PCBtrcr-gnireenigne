@@ -223,7 +223,7 @@ body {
   accent-color: var(--color-accent);
 }
 
-.board--aligning {
+.board--crosshair {
   cursor: crosshair;
 }
 

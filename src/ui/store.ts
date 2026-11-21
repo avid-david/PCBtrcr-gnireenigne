@@ -2,22 +2,24 @@ import { createContext, useContext } from 'react';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { Command } from '../core/commands/command';
+import { EMPTY_HISTORY } from '../core/commands/history';
+import type { FeatureId } from '../core/model/features';
 import { createProject, type Project } from '../core/model/project';
-import { createViewState, setActiveLayer, type ViewState } from '../core/view/viewState';
+import { createViewState, type ViewState } from '../core/view/viewState';
+import { alignStep, type AlignMode } from '../tools/align';
+import { activate, type ToolId } from '../tools/registry';
+import { DEFAULT_SETTINGS, type ToolSettings } from '../tools/settings';
+import type { ToolEvent } from '../tools/tool';
 import {
-  INITIAL_ALIGN,
-  alignStep,
-  reconcileAlign,
-  type AlignEvent,
-  type AlignState,
-} from '../tools/align';
+  applyCommands,
+  sendToTool,
+  toolContext,
+  travel,
+  type EditorData,
+} from './editorTransitions';
 
-/** Editor state: the project (edited only via commands) and how it is being viewed. */
-export interface EditorState {
-  readonly project: Project;
-  readonly view: ViewState;
-  /** Align mode state, or `null` while align mode is off. */
-  readonly align: AlignState | null;
+/** Editor state: the project (edited only via commands), its history and how it is viewed. */
+export interface EditorState extends EditorData {
   /** Short message for the status bar, e.g. an import error. */
   readonly notice: string | null;
   /**
@@ -26,11 +28,15 @@ export interface EditorState {
    */
   readonly projectGeneration: number;
   dispatch(command: Command): void;
+  undo(): void;
+  redo(): void;
   updateView(update: (view: ViewState, project: Project) => ViewState): void;
-  /** Turns align mode on or off. */
-  setAligning(on: boolean): void;
-  /** Feeds an event to the align tool and applies its commands (no-op outside align mode). */
-  sendAlign(event: AlignEvent): void;
+  setTool(id: ToolId): void;
+  sendTool(event: ToolEvent): void;
+  /** Switches align mode between placing corners and matching points. */
+  setAlignMode(mode: AlignMode): void;
+  setSelection(ids: readonly FeatureId[]): void;
+  updateSettings(update: (settings: ToolSettings) => ToolSettings): void;
   newProject(): void;
   setNotice(notice: string | null): void;
 }
@@ -39,72 +45,92 @@ export type EditorStore = StoreApi<EditorState>;
 
 export interface EditorStoreOptions {
   readonly project?: Project;
-  /** Id generator for new matches; injectable so tests are deterministic. */
+  /** Id generator for new features and matches; injectable so tests are deterministic. */
   readonly newId?: () => string;
 }
 
-/** Applies one align-tool step to the state (align mode must be on). */
-function stepAlign(
-  s: EditorState,
-  align: AlignState,
-  step: { readonly event: AlignEvent; readonly newId: () => string },
-): Partial<EditorState> {
-  const ctx = { project: s.project, activeLayerId: s.view.activeLayerId, newId: step.newId };
-  const { state, commands, activateLayer } = alignStep(align, step.event, ctx);
-  const project = commands.reduce((p, c) => c.execute(p), s.project);
-  const view = activateLayer === null ? s.view : setActiveLayer(s.view, project, activateLayer);
-  return { align: state, project, view };
-}
-
-/** Executes a command; align-mode state tied to a replaced photo or deleted point is dropped. */
-function applyCommand(s: EditorState, command: Command): Partial<EditorState> {
-  const project = command.execute(s.project);
-  return { project, align: s.align === null ? null : reconcileAlign(s.align, s.project, project) };
-}
-
-/** State after "New project": everything reset except the screen size. */
-function freshProjectState(s: EditorState): Partial<EditorState> {
+/** Everything except the screen size starts over with a new project. */
+const freshProject = (s: EditorState): Partial<EditorState> => {
   const fresh = createProject();
   return {
     project: fresh,
+    history: EMPTY_HISTORY,
     view: { ...createViewState(fresh), screen: s.view.screen },
-    align: null,
+    tool: activate('select'),
+    selection: [],
     notice: null,
     projectGeneration: s.projectGeneration + 1,
   };
-}
+};
+
+type Set = StoreApi<EditorState>['setState'];
+
+/** Actions that edit the project or drive the active tool. */
+const editingActions = (set: Set, newId: () => string) => ({
+  dispatch: (command: Command) => {
+    set((s) => applyCommands(s, [command]));
+  },
+  undo: () => {
+    set((s) => travel(s, 'undo'));
+  },
+  redo: () => {
+    set((s) => travel(s, 'redo'));
+  },
+  setTool: (id: ToolId) => {
+    set({ tool: activate(id) });
+  },
+  sendTool: (event: ToolEvent) => {
+    set((s) => sendToTool(s, event, newId));
+  },
+  setAlignMode: (mode: AlignMode) => {
+    set((s) =>
+      s.tool.id === 'align'
+        ? {
+            tool: {
+              id: 'align',
+              state: alignStep(s.tool.state, { type: 'setMode', mode }, toolContext(s, newId))
+                .state,
+            },
+          }
+        : {},
+    );
+  },
+});
+
+/** Actions that change how the project is shown or set up. */
+const viewActions = (set: Set) => ({
+  updateView: (update: (view: ViewState, project: Project) => ViewState) => {
+    set((s) => ({ view: update(s.view, s.project) }));
+  },
+  setSelection: (ids: readonly FeatureId[]) => {
+    set({ selection: ids });
+  },
+  updateSettings: (update: (settings: ToolSettings) => ToolSettings) => {
+    set((s) => ({ settings: update(s.settings) }));
+  },
+  newProject: () => {
+    set(freshProject);
+  },
+  setNotice: (notice: string | null) => {
+    set({ notice });
+  },
+});
 
 /** Creates an editor store; one per app (tests create their own). */
 export function createEditorStore(options: EditorStoreOptions = {}): EditorStore {
   const project = options.project ?? createProject();
   const newId = options.newId ?? (() => crypto.randomUUID());
-  return createStore<EditorState>()((set, get) => ({
+  return createStore<EditorState>()((set) => ({
     project,
+    history: EMPTY_HISTORY,
     view: createViewState(project),
-    align: null,
+    tool: activate('select'),
+    selection: [],
+    settings: DEFAULT_SETTINGS,
     notice: null,
     projectGeneration: 0,
-    dispatch: (command) => {
-      set((s) => applyCommand(s, command));
-    },
-    updateView: (update) => {
-      set((s) => ({ view: update(s.view, s.project) }));
-    },
-    setAligning: (on) => {
-      set({ align: on ? INITIAL_ALIGN : null });
-    },
-    sendAlign: (event) => {
-      const align = get().align;
-      if (align !== null) {
-        set((s) => stepAlign(s, align, { event, newId }));
-      }
-    },
-    newProject: () => {
-      set(freshProjectState);
-    },
-    setNotice: (notice) => {
-      set({ notice });
-    },
+    ...editingActions(set, newId),
+    ...viewActions(set),
   }));
 }
 

@@ -82,7 +82,7 @@ describe('photo import', () => {
     expect(state.view.viewport.zoom).toBeCloseTo(7.2);
   });
 
-  it('keeps the view for later photos and frees the replaced one', async () => {
+  it('keeps the view for later photos and keeps a replaced photo while undo needs it', async () => {
     let next = 0;
     const ids = ['a', 'b'];
     const { store, images, released, importPhoto } = setup((f) =>
@@ -92,8 +92,12 @@ describe('photo import', () => {
     store.getState().updateView((v) => ({ ...v, viewport: { zoom: 1, offset: { x: 0, y: 0 } } }));
     await importPhoto('top', file('second.png'));
     expect(store.getState().view.viewport.zoom).toBe(1);
-    expect(images.get('a')).toBeUndefined();
-    expect(released).toEqual(['a-pixels']);
+    // Undo can bring the first photo back, so its pixels stay until no step refers to it.
+    expect(images.get('a')).toBeDefined();
+    store.getState().undo();
+    expect(store.getState().project.layers[0]?.image?.id).toBe('a');
+    store.getState().newProject();
+    expect(released.sort()).toEqual(['a-pixels', 'b-pixels']);
   });
 
   it('shows load errors as a notice and changes nothing else', async () => {

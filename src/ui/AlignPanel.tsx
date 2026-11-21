@@ -5,6 +5,7 @@ import { pointsOnLayer, samePoint, type PointRef } from '../core/model/points';
 import type { Layer, Project } from '../core/model/project';
 import { previewProject } from '../tools/align';
 import { alignHint, pointLabel } from '../tools/alignHint';
+import { alignState } from './editorTransitions';
 import { useEditor, useEditorStore } from './store';
 import { parseMillimetres } from './units';
 
@@ -59,9 +60,9 @@ function BoardSizeForm() {
 
 function ModeSwitch() {
   const store = useEditorStore();
-  const mode = useEditor((s) => s.align?.mode);
+  const mode = useEditor((s) => alignState(s)?.mode);
   const choose = (next: 'corners' | 'matches') => () => {
-    store.getState().sendAlign({ type: 'setMode', mode: next });
+    store.getState().setAlignMode(next);
   };
   return (
     <div className="segmented" role="group" aria-label="Points to place">
@@ -89,7 +90,7 @@ function statusLine(a: LayerAlignment): string {
 /** The project as drawn: with a dragged point dropped where it is now (live preview). */
 function usePreviewProject(): Project {
   const saved = useEditor((s) => s.project);
-  const align = useEditor((s) => s.align);
+  const align = useEditor(alignState);
   return useMemo(() => (align === null ? saved : previewProject(saved, align)), [saved, align]);
 }
 
@@ -152,7 +153,7 @@ function LayerPoints({ layer }: { layer: Layer }) {
 /** Side panel content while align mode is on. */
 export function AlignPanel() {
   const hint = useEditor((s) =>
-    s.align === null ? '' : alignHint(s.project, s.align, s.view.activeLayerId),
+    s.tool.id === 'align' ? alignHint(s.project, s.tool.state, s.view.activeLayerId) : '',
   );
   const layers = useEditor((s) => s.project.layers);
   return (

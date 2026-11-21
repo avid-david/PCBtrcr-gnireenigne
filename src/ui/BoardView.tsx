@@ -1,4 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react';
+import { TOOLS } from '../tools/registry';
 import { useEditor, useEditorStore, type EditorStore } from './store';
 import { useNavigation } from './useNavigation';
 
@@ -32,7 +33,7 @@ export function BoardView({ mountBoard }: BoardViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const store = useEditorStore();
   const hasPhotos = useEditor((s) => s.project.layers.some((l) => l.image !== null));
-  const aligning = useEditor((s) => s.align !== null);
+  const cursor = useEditor((s) => TOOLS[s.tool.id].cursor);
   useEffect(() => {
     const host = hostRef.current;
     return host === null ? undefined : mountBoard(host);
@@ -41,11 +42,7 @@ export function BoardView({ mountBoard }: BoardViewProps) {
   useNavigation(hostRef, store);
   return (
     <main className="shell__canvas" aria-label="Board view">
-      <div
-        ref={hostRef}
-        className={aligning ? 'board board--aligning' : 'board'}
-        data-testid="board-host"
-      />
+      <div ref={hostRef} className={`board board--${cursor}`} data-testid="board-host" />
       {hasPhotos ? null : <p className="shell__empty">Import a photo to start.</p>}
     </main>
   );

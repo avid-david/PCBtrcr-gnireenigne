@@ -14,8 +14,10 @@ export interface BoardDeps<P> {
   readonly schedule: (callback: () => void) => void;
 }
 
-const changed = (a: EditorState, b: EditorState): boolean =>
-  a.project !== b.project || a.view !== b.view || a.align !== b.align;
+/** Store fields that affect the picture. */
+const DRAWN = ['project', 'view', 'tool', 'selection', 'settings'] as const;
+
+const changed = (a: EditorState, b: EditorState): boolean => DRAWN.some((key) => a[key] !== b[key]);
 
 /** Connects a renderer to the store: draws at most once per frame, only after changes. */
 function connect<P>(renderer: Renderer, deps: BoardDeps<P>): () => void {
@@ -23,12 +25,13 @@ function connect<P>(renderer: Renderer, deps: BoardDeps<P>): () => void {
   let lastScreen: ScreenSize | null = null;
   const draw = () => {
     pending = false;
-    const { project, view, align } = deps.store.getState();
+    const state = deps.store.getState();
+    const view = state.view;
     if (view.screen !== lastScreen) {
       lastScreen = view.screen;
       renderer.resize(view.screen);
     }
-    renderer.render(buildScene({ project, view, align }));
+    renderer.render(buildScene(state));
   };
   const request = () => {
     if (!pending) {

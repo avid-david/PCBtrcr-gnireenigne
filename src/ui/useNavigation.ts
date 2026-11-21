@@ -6,7 +6,7 @@ import {
   type NavigationEvent,
   type NavigationState,
 } from '../tools/navigation';
-import { forwardToAlign } from './alignInput';
+import { forwardDoubleClick, forwardToTool } from './toolInput';
 import type { EditorStore } from './store';
 
 const LINE_HEIGHT_PX = 16;
@@ -29,18 +29,18 @@ const localPoint = (host: HTMLElement, event: { clientX: number; clientY: number
 const isFormControl = (target: EventTarget | null): boolean =>
   target instanceof HTMLElement && /^(INPUT|BUTTON|SELECT|TEXTAREA)$/.test(target.tagName);
 
-type Send = (event: NavigationEvent) => boolean;
+type Send = (event: NavigationEvent, shift?: boolean) => boolean;
 
 function pointerListeners(host: HTMLElement, send: Send) {
   return {
     pointerdown: (e: PointerEvent) => {
-      if (send({ type: 'pointerdown', button: e.button, point: localPoint(host, e) })) {
+      if (send({ type: 'pointerdown', button: e.button, point: localPoint(host, e) }, e.shiftKey)) {
         host.setPointerCapture(e.pointerId);
         e.preventDefault();
       }
     },
     pointermove: (e: PointerEvent) => send({ type: 'pointermove', point: localPoint(host, e) }),
-    pointerup: () => send({ type: 'pointerup' }),
+    pointerup: (e: PointerEvent) => send({ type: 'pointerup', point: localPoint(host, e) }),
     pointercancel: () => send({ type: 'pointerup' }),
     // Stops the middle-click autoscroll cursor on Windows browsers.
     mousedown: (e: MouseEvent) => {
@@ -85,7 +85,27 @@ function listen<K extends keyof HTMLElementEventMap>(
   };
 }
 
-/** Wires pointer, wheel and space input on `hostRef` to navigation and (in align mode) the align tool. */
+/** Installs every board listener; returns the functions that remove them. */
+function listenAll(host: HTMLElement, send: Send, store: EditorStore): (() => void)[] {
+  const pointer = Object.entries(pointerListeners(host, send)) as [
+    keyof HTMLElementEventMap,
+    (e: Event) => unknown,
+  ][];
+  const onDoubleClick = (e: MouseEvent) => {
+    forwardDoubleClick(store, localPoint(host, e));
+  };
+  return [
+    listen(host, pointer),
+    listen(host, [['wheel', wheelListener(host, send)]], { passive: false }),
+    listen(host, [['dblclick', onDoubleClick]]),
+    listen(window, [
+      ['keydown', spaceListener(send, 'spacedown')],
+      ['keyup', spaceListener(send, 'spaceup')],
+    ]),
+  ];
+}
+
+/** Wires pointer, wheel and space input on `hostRef` to navigation, then to the active tool. */
 export function useNavigation(hostRef: RefObject<HTMLElement | null>, store: EditorStore): void {
   const state = useRef<NavigationState>(INITIAL_NAVIGATION);
   useEffect(() => {
@@ -93,29 +113,18 @@ export function useNavigation(hostRef: RefObject<HTMLElement | null>, store: Edi
     if (host === null) {
       return undefined;
     }
-    // Navigation gets every event first (panning works in every mode); what it leaves goes to
-    // the align tool when align mode is on.
-    const send: Send = (event) => {
+    // Navigation gets every event first (panning works with every tool); what it leaves goes
+    // to the active tool.
+    const send: Send = (event, shift = false) => {
       const before = store.getState().view.viewport;
       const result = navigate(state.current, before, event);
       state.current = result.state;
       if (result.viewport !== before) {
         store.getState().updateView((view) => ({ ...view, viewport: result.viewport }));
       }
-      return result.handled || forwardToAlign(store, event);
+      return result.handled || forwardToTool(store, event, shift);
     };
-    const pointer = Object.entries(pointerListeners(host, send)) as [
-      keyof HTMLElementEventMap,
-      (e: Event) => unknown,
-    ][];
-    const unlisten = [
-      listen(host, pointer),
-      listen(host, [['wheel', wheelListener(host, send)]], { passive: false }),
-      listen(window, [
-        ['keydown', spaceListener(send, 'spacedown')],
-        ['keyup', spaceListener(send, 'spaceup')],
-      ]),
-    ];
+    const unlisten = listenAll(host, send, store);
     return () => {
       unlisten.forEach((off) => {
         off();

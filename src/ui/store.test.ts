@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { alignState } from './editorTransitions';
 import { setLayerImage } from '../core/commands/command';
 import { setOverlayOpacity } from '../core/view/viewState';
 import { createEditorStore } from './store';
@@ -48,16 +49,16 @@ describe('editor store', () => {
 });
 
 describe('editor store align mode', () => {
-  it('ignores align events while align mode is off and resets it for a new project', () => {
+  it('switches align mode only while aligning, and a new project goes back to Select', () => {
     const store = createEditorStore();
     const before = store.getState();
-    store.getState().sendAlign({ type: 'cancel' });
-    expect(store.getState()).toBe(before);
-    store.getState().setAligning(true);
-    store.getState().sendAlign({ type: 'setMode', mode: 'matches' });
-    expect(store.getState().align?.mode).toBe('matches');
+    store.getState().setAlignMode('matches');
+    expect(store.getState().tool).toBe(before.tool);
+    store.getState().setTool('align');
+    store.getState().setAlignMode('matches');
+    expect(alignState(store.getState())?.mode).toBe('matches');
     store.getState().newProject();
-    expect(store.getState().align).toBeNull();
+    expect(store.getState().tool.id).not.toBe('align');
   });
 });
 
@@ -65,14 +66,17 @@ describe('editor store and replaced photos', () => {
   it('re-importing a photo cancels a half-made match on it', () => {
     const store = createEditorStore();
     store.getState().dispatch(setLayerImage('top', image));
-    store.getState().setAligning(true);
+    store.getState().setTool('align');
     store.setState({
-      align: { mode: 'matches', pending: { layerId: 'top', px: { x: 1, y: 1 } }, drag: null },
+      tool: {
+        id: 'align',
+        state: { mode: 'matches', pending: { layerId: 'top', px: { x: 1, y: 1 } }, drag: null },
+      },
     });
     store.getState().dispatch(setLayerImage('top', { ...image, id: 'replacement' }));
-    expect(store.getState().align?.pending).toBeNull();
-    store.getState().setAligning(false);
+    expect(alignState(store.getState())?.pending).toBeNull();
+    store.getState().setTool('select');
     store.getState().dispatch(setLayerImage('top', image));
-    expect(store.getState().align).toBeNull();
+    expect(store.getState().tool.id).not.toBe('align');
   });
 });

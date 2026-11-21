@@ -17,7 +17,7 @@ export interface AppShellProps {
 /** Application frame. Expects an `EditorStoreContext` provider above it. */
 export function AppShell({ appName, onImportPhoto, mountBoard }: AppShellProps) {
   useShortcuts(useEditorStore());
-  const aligning = useEditor((s) => s.align !== null);
+  const aligning = useEditor((s) => s.tool.id === 'align');
   return (
     <div className="shell">
       <Header appName={appName} onImportPhoto={onImportPhoto} />
