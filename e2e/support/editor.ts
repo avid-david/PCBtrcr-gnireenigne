@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { expect, type Page } from '@playwright/test';
 import { BOARD, bottomPhoto, topPhoto } from './boardPhotos';
 import type { Rgb } from './png';
@@ -77,4 +78,12 @@ export async function startAligning(page: Page): Promise<void> {
   await page.getByLabel('Overlay opacity').fill('0');
   await page.getByTestId('board-host').hover();
   await page.keyboard.press('Home');
+}
+
+/** Saves with Ctrl+S and returns the downloaded file's name and bytes. */
+export async function save(page: Page): Promise<{ name: string; bytes: Uint8Array }> {
+  const download = page.waitForEvent('download');
+  await page.keyboard.press('Control+s');
+  const file = await download;
+  return { name: file.suggestedFilename(), bytes: await readFile(await file.path()) };
 }
