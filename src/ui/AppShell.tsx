@@ -3,10 +3,12 @@ import type { LayerId } from '../core/model/project';
 import { AlignPanel } from './AlignPanel';
 import { BoardView } from './BoardView';
 import { Header } from './Header';
+import { Inspector } from './Inspector';
 import { LayerPanel } from './LayerPanel';
 import { useShortcuts } from './shortcuts';
 import { StatusBar } from './StatusBar';
 import { useEditor, useEditorStore } from './store';
+import { Toolbar } from './Toolbar';
 
 export interface AppShellProps {
   readonly appName: string;
@@ -21,9 +23,9 @@ export function AppShell({ appName, onImportPhoto, mountBoard }: AppShellProps) 
   return (
     <div className="shell">
       <Header appName={appName} onImportPhoto={onImportPhoto} />
-      <nav className="shell__toolbar" aria-label="Tools" />
+      <Toolbar />
       <BoardView mountBoard={mountBoard} />
-      <LayerPanel>{aligning ? <AlignPanel /> : null}</LayerPanel>
+      <LayerPanel>{aligning ? <AlignPanel /> : <Inspector />}</LayerPanel>
       <StatusBar />
     </div>
   );

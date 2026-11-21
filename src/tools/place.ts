@@ -121,3 +121,17 @@ export const holeTool = placeTool({
   shortcut: 'h',
   hint: 'Click to place a hole: plated holes connect both layers, mechanical ones do not.',
 });
+
+/**
+ * A feature built from the current defaults, for showing and editing them in the inspector
+ * before anything is placed.
+ */
+export function templateFeature(
+  kind: FeatureKindName,
+  settings: ToolSettings,
+  layerId: LayerId,
+): Feature {
+  return kind === 'trace'
+    ? { kind: 'trace', id: 'defaults', layerId, widthMm: settings.trace.widthMm, vertices: [] }
+    : make(kind, { id: 'defaults', at: { x: 0, y: 0 }, layerId, settings });
+}

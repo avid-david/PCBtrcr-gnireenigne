@@ -37,12 +37,15 @@ const IDLE: SelectState = { mode: 'idle' };
 /** Inactive-layer features are not editable; features on every layer always are (SPEC). */
 const editable = (f: Feature, ctx: ToolContext): boolean => featureOnLayer(f, ctx.activeLayerId);
 
-/** The topmost editable feature within the radius (later features are drawn on top). */
+/**
+ * The editable feature under the cursor. Pads, vias, points and holes win over traces, whose
+ * ends usually lie on them; otherwise the topmost (latest) feature wins.
+ */
 function hitFeature(ctx: ToolContext, at: Vec2, radiusMm: number): Feature | null {
   const hits = ctx.project.features.filter(
     (f) => editable(f, ctx) && featureDistance(f, at, ctx.project) <= radiusMm,
   );
-  return hits.at(-1) ?? null;
+  return hits.filter((f) => f.kind !== 'trace').at(-1) ?? hits.at(-1) ?? null;
 }
 
 const toggle = (ids: readonly FeatureId[], id: FeatureId): FeatureId[] =>

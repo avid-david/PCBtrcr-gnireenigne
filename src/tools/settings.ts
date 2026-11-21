@@ -1,4 +1,4 @@
-import type { PadShape } from '../core/model/features';
+import type { Feature, PadShape } from '../core/model/features';
 
 /**
  * Sizes for newly placed features and snapping options. The last value the user chose
@@ -18,6 +18,33 @@ export interface ToolSettings {
   readonly hole: { readonly diameterMm: number; readonly plated: boolean };
   readonly grid: { readonly enabled: boolean; readonly stepMm: number };
 }
+
+/** Takes a feature's sizes as the new defaults for its kind ("last value used becomes default"). */
+const remember: {
+  readonly [K in Feature['kind']]: (
+    s: ToolSettings,
+    f: Extract<Feature, { kind: K }>,
+  ) => ToolSettings;
+} = {
+  trace: (s, f) => ({ ...s, trace: { widthMm: f.widthMm } }),
+  via: (s, f) => ({ ...s, via: { drillMm: f.drillMm, padMm: f.padMm } }),
+  hole: (s, f) => ({ ...s, hole: { diameterMm: f.diameterMm, plated: f.plated } }),
+  point: (s, f) => ({ ...s, point: { diameterMm: f.diameterMm } }),
+  pad: (s, f) => ({
+    ...s,
+    pad: {
+      shape: f.shape,
+      widthMm: f.widthMm,
+      heightMm: f.heightMm,
+      throughHole: f.layerId === null,
+      drillMm: f.drillMm,
+    },
+  }),
+};
+
+/** Settings with the feature's sizes as the defaults for the next feature of its kind. */
+export const rememberDefaults = (settings: ToolSettings, feature: Feature): ToolSettings =>
+  (remember[feature.kind] as (s: ToolSettings, f: Feature) => ToolSettings)(settings, feature);
 
 export const DEFAULT_SETTINGS: ToolSettings = {
   trace: { widthMm: 0.25 },

@@ -1,3 +1,4 @@
+import type { FeatureKindName } from '../core/model/features';
 import type { Project } from '../core/model/project';
 import type { AlignState } from './align';
 import { alignTool } from './alignTool';
@@ -77,3 +78,12 @@ export const toolOverlay = (active: ActiveTool, ctx: ToolContext): ToolOverlay =
 /** Shortcut key → tool, from the registry. */
 export const toolForKey = (key: string): ToolId | undefined =>
   TOOL_ORDER.find((id) => TOOLS[id].shortcut === key);
+
+/** The feature kind a drawing tool creates (its defaults are shown in the inspector). */
+export const TOOL_KINDS: Partial<Readonly<Record<ToolId, FeatureKindName>>> = {
+  trace: 'trace',
+  via: 'via',
+  pad: 'pad',
+  point: 'point',
+  hole: 'hole',
+};

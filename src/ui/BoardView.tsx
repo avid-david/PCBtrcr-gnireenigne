@@ -32,7 +32,9 @@ function useScreenSize(hostRef: RefObject<HTMLElement | null>, store: EditorStor
 export function BoardView({ mountBoard }: BoardViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const store = useEditorStore();
-  const hasPhotos = useEditor((s) => s.project.layers.some((l) => l.image !== null));
+  const isEmpty = useEditor(
+    (s) => s.project.features.length === 0 && s.project.layers.every((l) => l.image === null),
+  );
   const cursor = useEditor((s) => TOOLS[s.tool.id].cursor);
   useEffect(() => {
     const host = hostRef.current;
@@ -43,7 +45,7 @@ export function BoardView({ mountBoard }: BoardViewProps) {
   return (
     <main className="shell__canvas" aria-label="Board view">
       <div ref={hostRef} className={`board board--${cursor}`} data-testid="board-host" />
-      {hasPhotos ? null : <p className="shell__empty">Import a photo to start.</p>}
+      {isEmpty ? <p className="shell__empty">Import a photo to start.</p> : null}
     </main>
   );
 }

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { smdPad, via, withFeatures } from '../core/model/features.test-support';
+import { bound, free, smdPad, trace, via, withFeatures } from '../core/model/features.test-support';
 import { createProject } from '../core/model/project';
 import { alignTool } from './alignTool';
 import { click, contextOf, down, drive, key, move, up } from './harness.test-support';
-import { holeTool, padTool, pointTool, viaTool } from './place';
+import { holeTool, padTool, pointTool, templateFeature, viaTool } from './place';
 import {
   TOOLS,
   TOOL_ORDER,
@@ -15,7 +15,7 @@ import {
   toolPreview,
 } from './registry';
 import { selectTool } from './select';
-import { DEFAULT_SETTINGS } from './settings';
+import { DEFAULT_SETTINGS, rememberDefaults } from './settings';
 
 describe('place tools', () => {
   it('place one feature per click with the current defaults and select it', () => {
@@ -194,5 +194,45 @@ describe('tool registry', () => {
     expect(alignTool.hint(alignTool.initial, ctx)).toBe('Enter the board size first.');
     expect(alignTool.preview(alignTool.initial, ctx.project)).toBe(ctx.project);
     expect(alignTool.overlay(alignTool.initial, ctx).ghost).toBeNull();
+  });
+});
+
+describe('select tool hit priority', () => {
+  it('prefers a pad over the trace whose end lies on it', () => {
+    const tied = withFeatures([
+      smdPad('pad', { x: 0, y: 0 }),
+      trace('t', [bound('a', 'pad'), free('b', { x: 5, y: 0 })]),
+    ]);
+    expect(drive(selectTool, tied, click({ x: 0, y: 0 })).selection).toEqual(['pad']);
+    expect(drive(selectTool, tied, click({ x: 3, y: 0 })).selection).toEqual(['t']);
+  });
+});
+
+describe('defaults', () => {
+  it('remembers the sizes of an edited feature for the next one of its kind', () => {
+    const pad = { ...smdPad('p', { x: 0, y: 0 }), widthMm: 2, shape: 'oval' as const };
+    expect(rememberDefaults(DEFAULT_SETTINGS, pad).pad).toMatchObject({
+      widthMm: 2,
+      shape: 'oval',
+      throughHole: false,
+    });
+    expect(rememberDefaults(DEFAULT_SETTINGS, via('v', { x: 0, y: 0 })).via).toEqual({
+      drillMm: 0.3,
+      padMm: 0.6,
+    });
+    expect(
+      rememberDefaults(DEFAULT_SETTINGS, { ...trace('t', []), widthMm: 0.5 }).trace.widthMm,
+    ).toBe(0.5);
+  });
+
+  it('builds a template feature from the defaults for every kind', () => {
+    expect(templateFeature('trace', DEFAULT_SETTINGS, 'top')).toMatchObject({
+      kind: 'trace',
+      widthMm: 0.25,
+    });
+    expect(templateFeature('point', DEFAULT_SETTINGS, 'bottom')).toMatchObject({
+      kind: 'point',
+      layerId: 'bottom',
+    });
   });
 });

@@ -98,3 +98,16 @@ describe('AppShell', () => {
     expect(screen.getByText('Unsupported file type').getAttribute('role')).toBe('status');
   });
 });
+
+describe('AppShell tools', () => {
+  it('shows the active tool’s hint and the inspector, or the align panel in align mode', () => {
+    const { store } = renderShell();
+    expect(screen.getByLabelText('Tool hint').textContent).toContain('Click to select');
+    expect(screen.getByRole('region', { name: 'Snapping' })).toBeDefined();
+    act(() => {
+      store.getState().setTool('align');
+    });
+    expect(screen.getByText('Alignment')).toBeDefined();
+    expect(screen.queryByRole('region', { name: 'Snapping' })).toBeNull();
+  });
+});
