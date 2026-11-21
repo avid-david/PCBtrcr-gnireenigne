@@ -13,7 +13,14 @@ export interface ViewState {
   /** Opacity (0–1) of the inactive layer drawn over the active one. */
   readonly overlayOpacity: number;
   readonly hiddenPhotos: readonly LayerId[];
+  /** Content hidden per layer (SPEC "Layers and overlay"), as `layerId:content` keys. */
+  readonly hiddenContent: readonly string[];
 }
+
+/** What can be shown or hidden per layer besides its photo. */
+export type LayerContent = 'copper' | 'silk' | 'text';
+
+const contentKey = (id: LayerId, content: LayerContent) => `${id}:${content}`;
 
 export const DEFAULT_OVERLAY_OPACITY = 0.5;
 
@@ -25,6 +32,7 @@ export function createViewState(project: Project): ViewState {
     screen: { width: 0, height: 0 },
     overlayOpacity: DEFAULT_OVERLAY_OPACITY,
     hiddenPhotos: [],
+    hiddenContent: [],
   };
 }
 
@@ -64,3 +72,18 @@ export function fitToView(view: ViewState, project: Project): ViewState {
   }
   return { ...view, viewport: fitToRect(bounds, view.screen) };
 }
+
+/** Shows or hides copper, silkscreen or text of a layer. */
+export function setContentVisible(
+  view: ViewState,
+  target: { readonly layerId: LayerId; readonly content: LayerContent },
+  visible: boolean,
+): ViewState {
+  const key = contentKey(target.layerId, target.content);
+  const others = view.hiddenContent.filter((hidden) => hidden !== key);
+  return { ...view, hiddenContent: visible ? others : [...others, key] };
+}
+
+/** Whether copper, silkscreen or text of a layer is shown. */
+export const isContentVisible = (view: ViewState, id: LayerId, content: LayerContent): boolean =>
+  !view.hiddenContent.includes(contentKey(id, content));

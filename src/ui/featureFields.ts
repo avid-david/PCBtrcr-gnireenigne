@@ -1,3 +1,4 @@
+import { normalizeAngle } from '../core/model/component';
 import type { Feature, FeatureKindName, Pad, PadShape } from '../core/model/features';
 import type { LayerId } from '../core/model/project';
 
@@ -9,6 +10,18 @@ export type Field<F> =
       get(f: F): number;
       set(f: F, value: number): F;
       visible?(f: F): boolean;
+    }
+  | {
+      readonly type: 'degrees';
+      readonly label: string;
+      get(f: F): number;
+      set(f: F, value: number): F;
+    }
+  | {
+      readonly type: 'text';
+      readonly label: string;
+      get(f: F): string;
+      set(f: F, value: string): F;
     }
   | {
       readonly type: 'check';
@@ -66,6 +79,16 @@ const padFields: Field<Pad>[] = [
   },
 ];
 
+const textFields = <F extends { text: string; heightMm: number }>(): Field<F>[] => [
+  { type: 'text', label: 'Text', get: (f) => f.text, set: (f, v) => ({ ...f, text: v }) },
+  {
+    type: 'mm',
+    label: 'Height (mm)',
+    get: (f) => f.heightMm,
+    set: (f, v) => ({ ...f, heightMm: v }),
+  },
+];
+
 /** Inspector fields per feature kind. Register new kinds here. */
 export const FEATURE_FIELDS: {
   readonly [K in FeatureKindName]: readonly Field<Extract<Feature, { kind: K }>>[];
@@ -110,6 +133,32 @@ export const FEATURE_FIELDS: {
       set: (f, v) => ({ ...f, diameterMm: v }),
     },
   ],
+  component: [
+    {
+      type: 'text',
+      label: 'Designator',
+      get: (f) => f.designator,
+      set: (f, v) => ({ ...f, designator: v.trim() }),
+    },
+    { type: 'text', label: 'Value', get: (f) => f.value, set: (f, v) => ({ ...f, value: v }) },
+    {
+      type: 'degrees',
+      label: 'Rotation (°, clockwise)',
+      get: (f) => f.rotationDeg,
+      set: (f, v) => ({ ...f, rotationDeg: normalizeAngle(v) }),
+    },
+  ],
+  plane: [],
+  text: textFields(),
+  silkLine: [
+    {
+      type: 'mm',
+      label: 'Width (mm)',
+      get: (f) => f.widthMm,
+      set: (f, v) => ({ ...f, widthMm: v }),
+    },
+  ],
+  silkText: textFields(),
 };
 
 /** The fields of a feature, with its kind erased for generic rendering. */
@@ -121,4 +170,9 @@ export const KIND_NAMES: Readonly<Record<FeatureKindName, string>> = {
   hole: 'Hole',
   pad: 'Pad',
   point: 'Connection point',
+  component: 'Component',
+  plane: 'Plane',
+  text: 'Note',
+  silkLine: 'Silkscreen line',
+  silkText: 'Silkscreen text',
 };

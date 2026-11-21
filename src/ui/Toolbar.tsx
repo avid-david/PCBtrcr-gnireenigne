@@ -9,6 +9,10 @@ const ICONS: Readonly<Record<ToolId, string>> = {
   pad: '▭',
   point: '⊙',
   hole: '○',
+  component: '▣',
+  plane: '▨',
+  silk: '✎',
+  text: 'T',
   align: '⌖',
 };
 
