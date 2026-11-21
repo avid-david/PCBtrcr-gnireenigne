@@ -2,7 +2,8 @@ import { useId, useState, type ReactElement } from 'react';
 import type { Feature } from '../core/model/features';
 import type { LayerId } from '../core/model/project';
 import type { Field } from './featureFields';
-import { parseMillimetres, parseNumber } from './units';
+import { useEditor } from './store';
+import { formatLength, parseLength, parseNumber, unitLabel } from './units';
 
 interface CommitInputProps<T> {
   readonly label: string;
@@ -11,6 +12,8 @@ interface CommitInputProps<T> {
   readonly parse: (text: string) => T | null;
   readonly onCommit: (value: T) => void;
   readonly inputMode?: 'decimal' | 'text';
+  /** How the value is shown; plain `String(value)` by default. */
+  readonly format?: (value: T) => string;
 }
 
 /**
@@ -18,13 +21,15 @@ interface CommitInputProps<T> {
  * undo step), not one per key. Give it a `key` that changes with the value so outside changes
  * reset the text.
  */
-export function CommitInput<T>({ label, value, parse, onCommit, inputMode }: CommitInputProps<T>) {
+export function CommitInput<T>(props: CommitInputProps<T>) {
+  const { label, value, parse, onCommit, inputMode } = props;
+  const show = props.format ?? String;
   const id = useId();
-  const [text, setText] = useState(String(value));
+  const [text, setText] = useState(show(value));
   const commit = () => {
     const parsed = parse(text);
     if (parsed === null) {
-      setText(String(value));
+      setText(show(value));
     } else if (parsed !== value) {
       onCommit(parsed);
     }
@@ -56,10 +61,24 @@ interface MmInputProps {
   readonly onCommit: (value: number) => void;
 }
 
-/** A length in mm (positive, decimal comma accepted). */
-export const MmInput = (props: MmInputProps) => (
-  <CommitInput {...props} parse={parseMillimetres} inputMode="decimal" />
-);
+/**
+ * A length, stored in mm and shown in the unit in use (mm or mil); a typed unit suffix wins.
+ * The label's "(mm)" shows the unit in use.
+ */
+export function MmInput({ label, value, onCommit }: MmInputProps) {
+  const unit = useEditor((s) => s.view.units);
+  return (
+    <CommitInput
+      key={unit}
+      label={unitLabel(label, unit)}
+      value={value}
+      parse={(text) => parseLength(text, unit)}
+      format={(mm) => formatLength(mm, unit)}
+      onCommit={onCommit}
+      inputMode="decimal"
+    />
+  );
+}
 
 const asText = (text: string): string => text;
 

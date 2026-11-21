@@ -12,7 +12,7 @@ import { setLayerImage } from '../core/commands/command';
 import { createProject, type Project } from '../core/model/project';
 import { AlignPanel } from './AlignPanel';
 import { EditorStoreContext, createEditorStore } from './store';
-import { parseMillimetres } from './units';
+import { formatLength, parseLength, unitLabel } from './units';
 
 function renderPanel(project: Project = createProject()) {
   const store = createEditorStore({ project, newId: () => 'id' });
@@ -80,13 +80,25 @@ describe('AlignPanel', () => {
   });
 });
 
-describe('parseMillimetres', () => {
+describe('lengths in mm or mil', () => {
   it('accepts positive numbers with point or comma and rejects the rest', () => {
-    expect(parseMillimetres(' 12.5 ')).toBe(12.5);
-    expect(parseMillimetres('7,25')).toBe(7.25);
-    expect(parseMillimetres('')).toBeNull();
-    expect(parseMillimetres('0')).toBeNull();
-    expect(parseMillimetres('-3')).toBeNull();
-    expect(parseMillimetres('abc')).toBeNull();
+    expect(parseLength(' 12.5 ', 'mm')).toBe(12.5);
+    expect(parseLength('7,25', 'mm')).toBe(7.25);
+    for (const bad of ['', '0', '-3', 'abc', '1.2.3', '5 inch']) {
+      expect(parseLength(bad, 'mm')).toBeNull();
+    }
+  });
+
+  it('reads the unit in use, or the one typed after the number', () => {
+    expect(parseLength('10', 'mil')).toBeCloseTo(0.254);
+    expect(parseLength('10mil', 'mm')).toBeCloseTo(0.254);
+    expect(parseLength('8 th', 'mm')).toBeCloseTo(0.2032);
+    expect(parseLength('0.5 MM', 'mil')).toBe(0.5);
+  });
+
+  it('shows lengths without floating-point noise and labels them with the unit', () => {
+    expect(formatLength(0.254, 'mil')).toBe('10');
+    expect(formatLength(0.1 + 0.2, 'mm')).toBe('0.3');
+    expect(unitLabel('Width (mm)', 'mil')).toBe('Width (mil)');
   });
 });
