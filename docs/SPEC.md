@@ -51,7 +51,8 @@ Engineering rules: [CLAUDE.md](../CLAUDE.md).
 
 ### Layers and overlay
 - The active layer is drawn fully opaque; the other layer can be shown as an overlay with adjustable
-  opacity (0–100 %) and optional tint, so the user can see where vias line up.
+  opacity (0–100 %), so the user can see where vias line up. (No tint: decided in
+  [ADR 0003](adr/0003-image-display.md).)
 - Per layer: toggle visibility of photo, copper features, silkscreen, text.
 - Features drawn on the inactive layer are dimmed and not editable until that layer is active
   (both-layer features such as vias are always editable).
@@ -61,7 +62,9 @@ Engineering rules: [CLAUDE.md](../CLAUDE.md).
 ### F1. Project and images
 - Create a project, import top and bottom photos (PNG/JPEG/WebP; must handle at least 24 MP images).
 - Pan (middle mouse / space-drag), zoom (wheel, centered on cursor), fit-to-view.
-- Switch active layer (toolbar + shortcut `Tab`).
+- Switch active layer (toolbar + shortcut `Tab`; Tab always switches layers, see
+  [ADR 0003](adr/0003-image-display.md)).
+- Fit to view: toolbar + shortcut `Home`.
 
 ### F2. Alignment (perspective matching / warping)
 - Mode in which the user places control points on a photo and their target position in board space.

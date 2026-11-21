@@ -3,8 +3,22 @@
 An open-source browser tool for reverse engineering printed circuit boards from photographs: import top
 and bottom photos, align them, trace copper features, and let the tool derive and color the nets.
 
-> **Status:** milestone M0 (project scaffold). The app shows an empty shell; features arrive from M1 on.
-> See [docs/SPEC.md](docs/SPEC.md#milestones).
+> **Status:** milestone M1 — import and view top/bottom photos with an adjustable overlay. Alignment
+> (M2) and tracing (M3) come next. See [docs/SPEC.md](docs/SPEC.md#milestones).
+
+## Using it (M1)
+
+| Action | How |
+| --- | --- |
+| Import photos | **Import top photo…** / **Import bottom photo…** (PNG, JPEG, WebP, up to 100 MP) |
+| Switch active layer | `Tab` or the **Top / Bottom** buttons |
+| Pan | Middle-mouse drag, or hold `Space` and drag |
+| Zoom | Mouse wheel (zooms around the cursor) |
+| Fit to view | `Home` or **Fit to view** |
+| Overlay | **Overlay opacity** slider: how strongly the inactive layer shows over the active one |
+| Per layer | **Show photo**, **Mirror horizontally** (the bottom photo starts mirrored) |
+
+Until alignment exists (M2), every photo is shown 100 mm wide so both sides roughly overlap.
 
 ## Quick start
 
