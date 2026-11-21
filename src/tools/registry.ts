@@ -1,8 +1,18 @@
-import type { FeatureKindName } from '../core/model/features';
 import type { Project } from '../core/model/project';
 import type { AlignState } from './align';
 import { alignTool } from './alignTool';
-import { holeTool, padTool, pointTool, viaTool, type PlaceState } from './place';
+import { componentTool, type ComponentState } from './component';
+import {
+  holeTool,
+  padTool,
+  pointTool,
+  textTool,
+  viaTool,
+  type PlaceState,
+  type TemplateKind,
+} from './place';
+import { planeTool, silkTool, type PolylineState } from './polyline';
+import type { ToolSettings } from './settings';
 import { selectTool, type SelectState } from './select';
 import type { Tool, ToolContext, ToolEvent, ToolOverlay, ToolResult } from './tool';
 import { traceTool, type TraceState } from './trace';
@@ -15,6 +25,10 @@ export interface ToolStates {
   readonly pad: PlaceState;
   readonly point: PlaceState;
   readonly hole: PlaceState;
+  readonly component: ComponentState;
+  readonly plane: PolylineState;
+  readonly silk: PolylineState;
+  readonly text: PlaceState;
   readonly align: AlignState;
 }
 
@@ -27,6 +41,10 @@ export const TOOLS: { readonly [K in ToolId]: Tool<ToolStates[K]> } = {
   pad: padTool,
   point: pointTool,
   hole: holeTool,
+  component: componentTool,
+  plane: planeTool,
+  silk: silkTool,
+  text: textTool,
   align: alignTool,
 };
 
@@ -38,6 +56,10 @@ export const TOOL_ORDER: readonly ToolId[] = [
   'pad',
   'point',
   'hole',
+  'component',
+  'plane',
+  'silk',
+  'text',
   'align',
 ];
 
@@ -79,11 +101,16 @@ export const toolOverlay = (active: ActiveTool, ctx: ToolContext): ToolOverlay =
 export const toolForKey = (key: string): ToolId | undefined =>
   TOOL_ORDER.find((id) => TOOLS[id].shortcut === key);
 
-/** The feature kind a drawing tool creates (its defaults are shown in the inspector). */
-export const TOOL_KINDS: Partial<Readonly<Record<ToolId, FeatureKindName>>> = {
-  trace: 'trace',
-  via: 'via',
-  pad: 'pad',
-  point: 'point',
-  hole: 'hole',
+const TEMPLATE_KINDS: Partial<Readonly<Record<ToolId, (s: ToolSettings) => TemplateKind>>> = {
+  trace: () => 'trace',
+  via: () => 'via',
+  pad: () => 'pad',
+  point: () => 'point',
+  hole: () => 'hole',
+  text: () => 'text',
+  silk: (s) => (s.silk.mode === 'line' ? 'silkLine' : 'silkText'),
 };
+
+/** The feature kind a drawing tool creates (its defaults are shown in the inspector), if any. */
+export const toolTemplateKind = (id: ToolId, settings: ToolSettings): TemplateKind | null =>
+  TEMPLATE_KINDS[id]?.(settings) ?? null;

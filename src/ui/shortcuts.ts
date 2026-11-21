@@ -47,6 +47,8 @@ export const SHORTCUTS: ShortcutMap = {
   Enter: toolKey('Enter'),
   Backspace: toolKey('Backspace'),
   Delete: toolKey('Delete'),
+  r: toolKey('r'),
+  f: toolKey('f'),
   g: notTyping((store) => {
     store
       .getState()
