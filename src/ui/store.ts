@@ -5,7 +5,7 @@ import type { Command } from '../core/commands/command';
 import { EMPTY_HISTORY } from '../core/commands/history';
 import type { FeatureId } from '../core/model/features';
 import { createProject, type Project } from '../core/model/project';
-import { createViewState, type ViewState } from '../core/view/viewState';
+import { createViewState, fitToView, type ViewState } from '../core/view/viewState';
 import { alignStep, type AlignMode } from '../tools/align';
 import { activate, type ToolId } from '../tools/registry';
 import { DEFAULT_SETTINGS, type ToolSettings } from '../tools/settings';
@@ -39,7 +39,36 @@ export interface EditorState extends EditorData {
   updateSettings(update: (settings: ToolSettings) => ToolSettings): void;
   newProject(): void;
   setNotice(notice: string | null): void;
+  /** Name of the project file, without `.pcbrt`. */
+  readonly fileName: string;
+  /** The project as last saved to (or opened from) a file; `null` if it never was. */
+  readonly savedProject: Project | null;
+  /** Unsaved work found in autosave at startup, waiting for the user to restore or discard it. */
+  readonly recovery: Recovery | null;
+  /** Replaces the project with one opened from a file or autosave; undo history starts over. */
+  loadProject(project: Project, options: LoadOptions): void;
+  markSaved(project: Project, fileName: string): void;
+  setRecovery(recovery: Recovery | null): void;
 }
+
+export interface Recovery {
+  readonly fileName: string;
+  /** When the autosave was written (ms since the epoch). */
+  readonly savedAt: number;
+}
+
+export interface LoadOptions {
+  readonly fileName: string;
+  /** Whether the project matches a file on disk (false for work restored from autosave). */
+  readonly saved: boolean;
+}
+
+/** File name of a project that was never saved. */
+export const DEFAULT_FILE_NAME = 'board';
+
+/** Whether the project has changes that are not in a file. */
+export const isDirty = (s: Pick<EditorState, 'project' | 'savedProject'>): boolean =>
+  s.project !== s.savedProject;
 
 export type EditorStore = StoreApi<EditorState>;
 
@@ -49,19 +78,42 @@ export interface EditorStoreOptions {
   readonly newId?: () => string;
 }
 
-/** Everything except the screen size starts over with a new project. */
+/** Everything except the screen size and settings starts over with another project. */
+const replaceProject = (s: EditorState, project: Project): Partial<EditorState> => ({
+  project,
+  history: EMPTY_HISTORY,
+  view: fitToView({ ...createViewState(project), screen: s.view.screen }, project),
+  tool: activate('select'),
+  selection: [],
+  notice: null,
+  projectGeneration: s.projectGeneration + 1,
+});
+
 const freshProject = (s: EditorState): Partial<EditorState> => {
   const fresh = createProject();
-  return {
-    project: fresh,
-    history: EMPTY_HISTORY,
-    view: { ...createViewState(fresh), screen: s.view.screen },
-    tool: activate('select'),
-    selection: [],
-    notice: null,
-    projectGeneration: s.projectGeneration + 1,
-  };
+  return { ...replaceProject(s, fresh), savedProject: fresh, fileName: DEFAULT_FILE_NAME };
 };
+
+/** Actions that open, save or recover a project. */
+const fileActions = (set: Set) => ({
+  newProject: () => {
+    set(freshProject);
+  },
+  loadProject: (project: Project, { fileName, saved }: LoadOptions) => {
+    set((s) => ({
+      ...replaceProject(s, project),
+      savedProject: saved ? project : null,
+      fileName,
+      recovery: null,
+    }));
+  },
+  markSaved: (savedProject: Project, fileName: string) => {
+    set({ savedProject, fileName });
+  },
+  setRecovery: (recovery: Recovery | null) => {
+    set({ recovery });
+  },
+});
 
 type Set = StoreApi<EditorState>['setState'];
 
@@ -108,9 +160,6 @@ const viewActions = (set: Set) => ({
   updateSettings: (update: (settings: ToolSettings) => ToolSettings) => {
     set((s) => ({ settings: update(s.settings) }));
   },
-  newProject: () => {
-    set(freshProject);
-  },
   setNotice: (notice: string | null) => {
     set({ notice });
   },
@@ -129,8 +178,12 @@ export function createEditorStore(options: EditorStoreOptions = {}): EditorStore
     settings: DEFAULT_SETTINGS,
     notice: null,
     projectGeneration: 0,
+    fileName: DEFAULT_FILE_NAME,
+    savedProject: project,
+    recovery: null,
     ...editingActions(set, newId),
     ...viewActions(set),
+    ...fileActions(set),
   }));
 }
 

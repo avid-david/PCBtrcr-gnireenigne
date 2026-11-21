@@ -100,6 +100,7 @@ describe('board controller', () => {
     const loaded = {
       image: { id: 'a', fileName: 'a', mimeType: 'image/png', widthPx: 1, heightPx: 1 },
       tiles: [],
+      bytes: new Uint8Array(),
     };
     images.add(loaded);
     expect(lookups[0]?.('a')).toBe(loaded);

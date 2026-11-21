@@ -10,6 +10,7 @@ import { createPhotoImporter } from './importPhoto';
 const loaded = (id: string, name: string): LoadedImage<string> => ({
   image: { id, fileName: name, mimeType: 'image/png', widthPx: 1000, heightPx: 500 },
   tiles: [{ rect: { x: 0, y: 0, width: 1000, height: 500 }, pixels: `${id}-pixels` }],
+  bytes: new Uint8Array(),
 });
 
 function setup(load: ImageLoader<ImageFile, string>) {

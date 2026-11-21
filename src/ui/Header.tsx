@@ -2,11 +2,14 @@ import type { ChangeEvent } from 'react';
 import type { Layer, LayerId } from '../core/model/project';
 import { redoLabel, undoLabel } from '../core/commands/history';
 import { fitToView, setActiveLayer } from '../core/view/viewState';
+import { confirmDiscard, type ProjectFileActions } from './projectFileActions';
+import { OpenProjectButton, SaveProject } from './ProjectFileControls';
 import { useEditor, useEditorStore } from './store';
 
 export interface HeaderProps {
   readonly appName: string;
   readonly onImportPhoto: (layerId: LayerId, file: File) => void;
+  readonly files: ProjectFileActions;
 }
 
 const ACCEPTED_TYPES = 'image/png,image/jpeg,image/webp';
@@ -56,8 +59,7 @@ function LayerSwitch() {
 function NewProjectButton() {
   const store = useEditorStore();
   const onClick = () => {
-    const hasPhotos = store.getState().project.layers.some((l) => l.image !== null);
-    if (!hasPhotos || window.confirm('Discard the current project and start a new one?')) {
+    if (confirmDiscard(store, 'start a new project')) {
       store.getState().newProject();
     }
   };
@@ -98,14 +100,16 @@ function UndoRedo() {
   );
 }
 
-/** Top bar: project and import actions, undo/redo, active layer switch and fit-to-view. */
-export function Header({ appName, onImportPhoto }: HeaderProps) {
+/** Top bar: project file and import actions, undo/redo, active layer switch and fit-to-view. */
+export function Header({ appName, onImportPhoto, files }: HeaderProps) {
   const store = useEditorStore();
   const layers = useEditor((s) => s.project.layers);
   return (
     <header className="shell__header">
       <h1 className="shell__title">{appName}</h1>
       <NewProjectButton />
+      <OpenProjectButton store={store} onOpen={files.openProject} />
+      <SaveProject onSave={files.saveProject} />
       {layers.map((layer) => (
         <ImportButton key={layer.id} layer={layer} onImportPhoto={onImportPhoto} />
       ))}

@@ -15,16 +15,23 @@ function renderShell(store: EditorStore = createEditorStore()) {
   const onImportPhoto = vi.fn();
   const unmountBoard = vi.fn();
   const mountBoard = vi.fn(() => unmountBoard);
+  const files = {
+    openProject: vi.fn(),
+    saveProject: vi.fn(),
+    restoreRecovery: vi.fn(),
+    discardRecovery: vi.fn(),
+  };
   const view = render(
     <EditorStoreContext value={store}>
       <AppShell
         appName="PCB Reverse Tracer"
         onImportPhoto={onImportPhoto}
         mountBoard={mountBoard}
+        files={files}
       />
     </EditorStoreContext>,
   );
-  return { store, onImportPhoto, mountBoard, unmountBoard, view };
+  return { store, onImportPhoto, mountBoard, unmountBoard, view, files };
 }
 
 beforeEach(() => {
@@ -109,5 +116,35 @@ describe('AppShell tools', () => {
     });
     expect(screen.getByText('Alignment')).toBeDefined();
     expect(screen.queryByRole('region', { name: 'Snapping' })).toBeNull();
+  });
+});
+
+describe('AppShell project files', () => {
+  it('Ctrl+S saves and Ctrl+O opens the file picker, even while typing', () => {
+    const { files, view } = renderShell();
+    const input = view.container.querySelector<HTMLInputElement>('input[accept=".pcbrt"]');
+    const click = vi.spyOn(input ?? document.body, 'click').mockImplementation(() => undefined);
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+    fireEvent.keyDown(window, { key: 'o', ctrlKey: true });
+    expect(files.saveProject).toHaveBeenCalledOnce();
+    expect(click).toHaveBeenCalledOnce();
+  });
+
+  it('offers recovery of autosaved work and hides the banner once answered', () => {
+    const { store, files } = renderShell();
+    expect(screen.queryByRole('region', { name: 'Recover unsaved work' })).toBeNull();
+    act(() => {
+      store.getState().setRecovery({ fileName: 'amp', savedAt: 0 });
+    });
+    const banner = screen.getByRole('region', { name: 'Recover unsaved work' });
+    expect(banner.textContent).toContain('“amp”');
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(files.restoreRecovery).toHaveBeenCalledOnce();
+    expect(files.discardRecovery).toHaveBeenCalledOnce();
+    act(() => {
+      store.getState().setRecovery(null);
+    });
+    expect(screen.queryByRole('region', { name: 'Recover unsaved work' })).toBeNull();
   });
 });

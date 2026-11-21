@@ -15,6 +15,7 @@ function fakeCodec(size: { widthPx: number; heightPx: number }, decodeError?: Er
     crop: (pixels, rect) =>
       Promise.resolve({ label: `${pixels.label}@${String(rect.x)},${String(rect.y)}` }),
     release: (pixels) => released.push(pixels.label),
+    read: (file) => Promise.resolve(new TextEncoder().encode(file.name)),
     newId: () => 'id-1',
   };
   return { codec, released };
@@ -38,6 +39,13 @@ describe('image loader', () => {
       'top.png@4096,0',
     ]);
     expect(released).toEqual(['top.png']);
+  });
+
+  it('keeps the original file bytes and can reuse a saved image id', async () => {
+    const { codec } = fakeCodec({ widthPx: 10, heightPx: 10 });
+    const result = await createImageLoader(codec)(png, { imageId: 'saved-7' });
+    expect(result.ok && result.value.image.id).toBe('saved-7');
+    expect(result.ok && new TextDecoder().decode(result.value.bytes)).toBe('top.png');
   });
 
   it('refuses unsupported types without decoding', async () => {

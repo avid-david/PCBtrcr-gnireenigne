@@ -6,15 +6,23 @@ import { EditorStoreContext, createEditorStore } from './store';
 
 const image = { id: 'i', fileName: 'top.png', mimeType: 'image/png', widthPx: 1000, heightPx: 500 };
 
+const fileActions = () => ({
+  openProject: vi.fn(),
+  saveProject: vi.fn(),
+  restoreRecovery: vi.fn(),
+  discardRecovery: vi.fn(),
+});
+
 function renderHeader() {
   const store = createEditorStore();
   const onImportPhoto = vi.fn();
+  const files = fileActions();
   render(
     <EditorStoreContext value={store}>
-      <Header appName="App" onImportPhoto={onImportPhoto} />
+      <Header appName="App" onImportPhoto={onImportPhoto} files={files} />
     </EditorStoreContext>,
   );
-  return { store, onImportPhoto };
+  return { store, onImportPhoto, files };
 }
 
 afterEach(() => {
@@ -54,7 +62,7 @@ describe('Header', () => {
     expect(store.getState().view.viewport.zoom).toBeCloseTo(7.2);
   });
 
-  it('starts a new project at once when there are no photos', () => {
+  it('starts a new project at once when nothing is unsaved', () => {
     const { store } = renderHeader();
     const confirm = vi.spyOn(window, 'confirm');
     const before = store.getState().project;
@@ -63,7 +71,7 @@ describe('Header', () => {
     expect(store.getState().project).not.toBe(before);
   });
 
-  it('asks before discarding photos', () => {
+  it('asks before discarding unsaved changes', () => {
     const { store } = renderHeader();
     act(() => {
       store.getState().dispatch(setLayerImage('top', image));
@@ -73,6 +81,39 @@ describe('Header', () => {
     expect(store.getState().project.layers[0]?.image).toBe(image);
     fireEvent.click(screen.getByRole('button', { name: 'New project' }));
     expect(store.getState().project.layers[0]?.image).toBeNull();
+  });
+});
+
+describe('Header project file', () => {
+  const project = new File(['zip'], 'amp.pcbrt');
+
+  it('opens the chosen project file', () => {
+    const { files } = renderHeader();
+    fireEvent.change(screen.getByLabelText('Open project file'), { target: { files: [project] } });
+    expect(files.openProject).toHaveBeenCalledWith(project);
+  });
+
+  it('asks before opening over unsaved changes', () => {
+    const { store, files } = renderHeader();
+    act(() => {
+      store.getState().dispatch(setLayerImage('top', image));
+    });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false);
+    fireEvent.change(screen.getByLabelText('Open project file'), { target: { files: [project] } });
+    expect(confirm.mock.calls[0]?.[0]).toContain('"board" has unsaved changes');
+    expect(files.openProject).not.toHaveBeenCalled();
+  });
+
+  it('saves on click and shows the file name, marked while unsaved', () => {
+    const { store, files } = renderHeader();
+    const fileName = screen.getByLabelText('Project file');
+    expect(fileName.textContent).toBe('board.pcbrt');
+    act(() => {
+      store.getState().dispatch(setLayerImage('top', image));
+    });
+    expect(fileName.textContent).toContain('unsaved changes');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(files.saveProject).toHaveBeenCalledOnce();
   });
 });
 

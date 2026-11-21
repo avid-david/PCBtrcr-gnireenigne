@@ -3,9 +3,9 @@
 An open-source browser tool for reverse engineering printed circuit boards from photographs: import top
 and bottom photos, align them, trace copper features, and let the tool derive and color the nets.
 
-> **Status:** milestone M3 — import, overlay and align top/bottom photos, then trace copper (traces,
-> vias, pads, connection points, holes) with nets coloured automatically and unlimited undo.
-> Saving (M4) comes next. See [docs/SPEC.md](docs/SPEC.md#milestones).
+> **Status:** milestone M4 — import, overlay and align top/bottom photos, trace copper (traces, vias,
+> pads, connection points, holes) with nets coloured automatically and unlimited undo, and save or
+> open projects as `.pcbrt` files with autosave. Footprints (M5) come next. See [docs/SPEC.md](docs/SPEC.md#milestones).
 
 ## Using it
 
@@ -21,6 +21,7 @@ and bottom photos, align them, trace copper features, and let the tool derive an
 | Tools | Select `S`, Trace `T`, Via `V`, Pad `P`, Connection point `C`, Hole `H`, Align `A` (left toolbar) |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Y` (or `Ctrl+Shift+Z`), or the header buttons |
 | Grid snapping | `G` or the `#` toolbar button; the step is in the side panel |
+| Save / open | `Ctrl+S` / `Ctrl+O`, or **Save** / **Open…** (a `.pcbrt` file; see below) |
 
 ### Aligning the photos
 
@@ -48,6 +49,17 @@ Tip: set **Overlay opacity** to 0 % while clicking, so only the active photo is 
 - Everything electrically connected shares one colour. Features on the inactive layer are dimmed and
   can only be edited from their own layer.
 
+### Saving
+
+- **Save** (`Ctrl+S`) downloads `<name>.pcbrt`: a zip with `project.json` and the original photos,
+  unchanged. **Open…** (`Ctrl+O`) loads one; the next save uses its name. The header shows the file
+  name and a ● while there are unsaved changes; opening another file or starting a new project with
+  unsaved changes asks first.
+- Each save is a new download, so the browser may name it `board (1).pcbrt`.
+- Your work is also autosaved in the browser one second after every change. If you close the tab
+  with unsaved changes, the next start offers to **Restore** or **Discard** them.
+- Undo history, view, selection and tool settings are not saved; nets and alignment are recalculated.
+
 ## Quick start
 
 Requirements: Node 24 LTS (see `.nvmrc`) and pnpm 10 (`npm i -g pnpm@10`, or `corepack enable`).
@@ -69,7 +81,7 @@ pnpm dev            # http://localhost:5173
 | `pnpm typecheck` | `tsc -b` over core (no DOM), app and tooling projects |
 | `pnpm test` | Vitest unit tests; add `--coverage` for coverage + thresholds |
 | `pnpm crap` | CRAP score per function (needs a prior `pnpm test --coverage`) |
-| `pnpm test:e2e` | Playwright smoke test against the production build |
+| `pnpm test:e2e` | Playwright end-to-end tests against the production build |
 
 The first `pnpm test:e2e` needs a browser: `pnpm exec playwright install chromium`.
 

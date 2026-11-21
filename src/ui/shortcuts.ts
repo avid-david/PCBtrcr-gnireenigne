@@ -3,13 +3,13 @@ import { cycleActiveLayer, fitToView } from '../core/view/viewState';
 import { TOOLS, TOOL_ORDER, type ToolId } from '../tools/registry';
 import type { EditorStore } from './store';
 
-interface Shortcut {
+export interface Shortcut {
   readonly run: (store: EditorStore) => void;
   /** Whether it also works while typing in a text field (letters and edit keys must not). */
   readonly whileTyping: boolean;
 }
 
-const always = (run: Shortcut['run']): Shortcut => ({ run, whileTyping: true });
+export const always = (run: Shortcut['run']): Shortcut => ({ run, whileTyping: true });
 const notTyping = (run: Shortcut['run']): Shortcut => ({ run, whileTyping: false });
 
 /** Selecting the active tool again goes back to Select (so `A` toggles align mode). */
@@ -31,7 +31,9 @@ const toolShortcuts = Object.fromEntries(
  * Global shortcuts by key combination ("Ctrl+Shift+z" style; single characters lower-case).
  * Tab always switches layers (decided for M1), so the browser's focus movement is suppressed.
  */
-export const SHORTCUTS: Readonly<Record<string, Shortcut>> = {
+export type ShortcutMap = Readonly<Record<string, Shortcut>>;
+
+export const SHORTCUTS: ShortcutMap = {
   ...toolShortcuts,
   Tab: always((store) => {
     store.getState().updateView(cycleActiveLayer);
@@ -73,9 +75,20 @@ export function comboOf(
   return ctrl ? `Ctrl+${e.shiftKey ? 'Shift+' : ''}${key}` : key;
 }
 
+export interface RunOptions {
+  /** Whether focus is in a text field. */
+  readonly typing?: boolean;
+  /** Shortcuts the app adds (e.g. Ctrl+S, which needs platform file access). */
+  readonly extra?: ShortcutMap;
+}
+
 /** Runs the shortcut for a combination; returns whether one ran. */
-export function runShortcut(store: EditorStore, combo: string, typing = false): boolean {
-  const shortcut = SHORTCUTS[combo];
+export function runShortcut(
+  store: EditorStore,
+  combo: string,
+  { typing = false, extra = {} }: RunOptions = {},
+): boolean {
+  const shortcut = extra[combo] ?? SHORTCUTS[combo];
   if (shortcut === undefined || (typing && !shortcut.whileTyping)) {
     return false;
   }
@@ -87,8 +100,10 @@ const isTextField = (target: EventTarget | null): boolean =>
   (target instanceof HTMLInputElement && target.type !== 'checkbox' && target.type !== 'range') ||
   target instanceof HTMLSelectElement;
 
+const NO_EXTRA: ShortcutMap = {};
+
 /** Installs the global shortcuts on `window` while the component is mounted. */
-export function useShortcuts(store: EditorStore): void {
+export function useShortcuts(store: EditorStore, extra: ShortcutMap = NO_EXTRA): void {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       // Enter on a focused button presses the button, not a tool.
@@ -96,7 +111,8 @@ export function useShortcuts(store: EditorStore): void {
         return;
       }
       const combo = comboOf(event);
-      if (combo !== null && runShortcut(store, combo, isTextField(event.target))) {
+      const typing = isTextField(event.target);
+      if (combo !== null && runShortcut(store, combo, { typing, extra })) {
         event.preventDefault();
       }
     };
@@ -104,5 +120,5 @@ export function useShortcuts(store: EditorStore): void {
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [store]);
+  }, [store, extra]);
 }

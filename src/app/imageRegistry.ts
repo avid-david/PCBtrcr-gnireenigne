@@ -4,6 +4,7 @@ import type { ImageId } from '../core/model/project';
 /** Decoded photos by image id, kept outside the (serializable) model. */
 export interface ImageRegistry<P> {
   get(id: ImageId): LoadedImage<P> | undefined;
+  /** Adds an image; one already stored under the same id is removed first. */
   add(image: LoadedImage<P>): void;
   /** Frees the pixels of an image and tells listeners it is gone. */
   remove(id: ImageId): void;
@@ -36,7 +37,12 @@ export function createImageRegistry<P>(release: (pixels: P) => void): ImageRegis
   };
   return {
     get: (id) => images.get(id),
-    add: (image) => images.set(image.image.id, image),
+    add: (image) => {
+      if (images.get(image.image.id) !== image) {
+        remove(image.image.id);
+      }
+      images.set(image.image.id, image);
+    },
     remove,
     retainOnly: (keep) => {
       [...images.keys()].filter((id) => !keep.has(id)).forEach(remove);

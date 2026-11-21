@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { alignState } from './editorTransitions';
 import { setLayerImage } from '../core/commands/command';
+import { EMPTY_HISTORY } from '../core/commands/history';
+import { createProject } from '../core/model/project';
 import { setOverlayOpacity } from '../core/view/viewState';
-import { createEditorStore } from './store';
+import { createEditorStore, DEFAULT_FILE_NAME, isDirty } from './store';
 
 const image = { id: 'i', fileName: 'a.png', mimeType: 'image/png', widthPx: 10, heightPx: 10 };
 
@@ -78,5 +80,58 @@ describe('editor store and replaced photos', () => {
     store.getState().setTool('select');
     store.getState().dispatch(setLayerImage('top', image));
     expect(store.getState().tool.id).not.toBe('align');
+  });
+});
+
+describe('editor store files', () => {
+  it('a new store has a saved, unnamed project', () => {
+    const state = createEditorStore().getState();
+    expect(state.fileName).toBe(DEFAULT_FILE_NAME);
+    expect(isDirty(state)).toBe(false);
+  });
+
+  it('edits make the project dirty and undoing them makes it clean again', () => {
+    const store = createEditorStore();
+    store.getState().dispatch(setLayerImage('top', image));
+    expect(isDirty(store.getState())).toBe(true);
+    store.getState().undo();
+    expect(isDirty(store.getState())).toBe(false);
+  });
+
+  it('marking a project saved records it and its file name', () => {
+    const store = createEditorStore();
+    store.getState().dispatch(setLayerImage('top', image));
+    store.getState().markSaved(store.getState().project, 'amp');
+    expect(isDirty(store.getState())).toBe(false);
+    expect(store.getState().fileName).toBe('amp');
+  });
+
+  it('loading a project starts a fresh history, a new generation and clears recovery', () => {
+    const store = createEditorStore();
+    store.getState().dispatch(setLayerImage('top', image));
+    store.getState().setRecovery({ fileName: 'x', savedAt: 1 });
+    const opened = createProject();
+    store.getState().loadProject(opened, { fileName: 'amp', saved: true });
+    const state = store.getState();
+    expect(state.project).toBe(opened);
+    expect(state.history).toBe(EMPTY_HISTORY);
+    expect(state.projectGeneration).toBe(1);
+    expect(state.recovery).toBeNull();
+    expect(state.fileName).toBe('amp');
+    expect(isDirty(state)).toBe(false);
+  });
+
+  it('a project restored from autosave stays dirty until saved', () => {
+    const store = createEditorStore();
+    store.getState().loadProject(createProject(), { fileName: 'amp', saved: false });
+    expect(isDirty(store.getState())).toBe(true);
+  });
+
+  it('a new project forgets the file name', () => {
+    const store = createEditorStore();
+    store.getState().markSaved(store.getState().project, 'amp');
+    store.getState().newProject();
+    expect(store.getState().fileName).toBe(DEFAULT_FILE_NAME);
+    expect(isDirty(store.getState())).toBe(false);
   });
 });
