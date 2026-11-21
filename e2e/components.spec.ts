@@ -114,7 +114,7 @@ test('saves components, planes, notes and silkscreen and opens them unchanged', 
     schemaVersion: number;
     project: { features: { kind: string; designator?: string }[] };
   };
-  expect(project.schemaVersion).toBe(2);
+  expect(project.schemaVersion).toBe(3);
   expect(project.project.features.map((f) => f.designator ?? f.kind)).toEqual([
     'J1',
     'R1',
