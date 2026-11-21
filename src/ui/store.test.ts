@@ -1,0 +1,38 @@
+import { describe, expect, it } from 'vitest';
+import { setLayerImage } from '../core/commands/command';
+import { setOverlayOpacity } from '../core/view/viewState';
+import { createEditorStore } from './store';
+
+const image = { id: 'i', fileName: 'a.png', mimeType: 'image/png', widthPx: 10, heightPx: 10 };
+
+describe('editor store', () => {
+  it('applies commands to the project', () => {
+    const store = createEditorStore();
+    store.getState().dispatch(setLayerImage('top', image));
+    expect(store.getState().project.layers[0]?.image).toBe(image);
+  });
+
+  it('updates the view without touching the project', () => {
+    const store = createEditorStore();
+    const project = store.getState().project;
+    store.getState().updateView((view) => setOverlayOpacity(view, 0.2));
+    expect(store.getState().view.overlayOpacity).toBe(0.2);
+    expect(store.getState().project).toBe(project);
+  });
+
+  it('new project resets project, view and notice but keeps the screen size', () => {
+    const store = createEditorStore();
+    store.getState().dispatch(setLayerImage('top', image));
+    store.getState().updateView((view) => ({
+      ...setOverlayOpacity(view, 0.9),
+      screen: { width: 640, height: 480 },
+    }));
+    store.getState().setNotice('hello');
+    store.getState().newProject();
+    const state = store.getState();
+    expect(state.project.layers.every((l) => l.image === null)).toBe(true);
+    expect(state.view.overlayOpacity).toBe(0.5);
+    expect(state.view.screen).toEqual({ width: 640, height: 480 });
+    expect(state.notice).toBeNull();
+  });
+});
