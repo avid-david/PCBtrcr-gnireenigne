@@ -66,7 +66,24 @@ export function unpackProject(bytes: Uint8Array, fileName: string): StoredProjec
   return { project: project.value, photos: archive.value.photos, fileName: name, saved: true };
 }
 
-type PhotoOutcome<P> = { readonly loaded: LoadedImage<P> } | { readonly problem: string };
+interface PhotoOutcome<P> {
+  /** What goes into the registry: the decoded photo, or only its bytes when it cannot be shown. */
+  readonly loaded: LoadedImage<P> | null;
+  readonly problem: string | null;
+}
+
+/**
+ * A photo that cannot be shown keeps its original bytes, without tiles, so saving the project
+ * again does not drop it from the file (docs/adr/0006).
+ */
+const undisplayable = (
+  image: SourceImage,
+  bytes: Uint8Array,
+  problem: string,
+): PhotoOutcome<never> => ({
+  loaded: { image, tiles: [], bytes },
+  problem: `Photo ${image.fileName} ${problem}; it stays in the project file but is not shown.`,
+});
 
 async function loadPhoto<F extends ImageFile, P>(
   deps: ProjectFileDeps<F, P>,
@@ -74,23 +91,30 @@ async function loadPhoto<F extends ImageFile, P>(
   bytes: Uint8Array | undefined,
 ): Promise<PhotoOutcome<P>> {
   if (bytes === undefined) {
-    return { problem: `Photo ${image.fileName} is missing from the file; import it again.` };
+    return {
+      loaded: null,
+      problem: `Photo ${image.fileName} is missing from the file; import it again.`,
+    };
   }
   const result = await deps.load(deps.toFile(bytes, image), { imageId: image.id });
   if (!result.ok) {
-    return { problem: `Photo ${image.fileName}: ${describeImageLoadError(result.error)}` };
+    return undisplayable(
+      image,
+      bytes,
+      `could not be shown (${describeImageLoadError(result.error)})`,
+    );
   }
   const { widthPx, heightPx } = result.value.image;
   if (widthPx !== image.widthPx || heightPx !== image.heightPx) {
     deps.images.discard(result.value);
-    return { problem: `Photo ${image.fileName} does not match its size in the project.` };
+    return undisplayable(image, bytes, 'does not match its size in the project');
   }
-  return { loaded: result.value };
+  return { loaded: result.value, problem: null };
 }
 
 /**
  * Decodes the stored photos and replaces the editor's project. Photos that are missing or
- * unreadable are reported, and the project opens without them (docs/adr/0006). A load that
+ * cannot be shown are reported and the project opens anyway (docs/adr/0006). A load that
  * finishes after another project was started or opened is dropped.
  */
 export async function installProject<F extends ImageFile, P>(
@@ -102,7 +126,7 @@ export async function installProject<F extends ImageFile, P>(
   const outcomes = await Promise.all(
     imagesOf(stored.project).map((image) => loadPhoto(deps, image, stored.photos.get(image.id))),
   );
-  const loaded = outcomes.flatMap((o) => ('loaded' in o ? [o.loaded] : []));
+  const loaded = outcomes.flatMap((o) => (o.loaded === null ? [] : [o.loaded]));
   if (deps.store.getState().projectGeneration !== generation) {
     loaded.forEach((image) => {
       deps.images.discard(image);
@@ -114,7 +138,7 @@ export async function installProject<F extends ImageFile, P>(
   });
   const { fileName, saved } = stored;
   deps.store.getState().loadProject(stored.project, { fileName, saved });
-  const problems = outcomes.flatMap((o) => ('problem' in o ? [o.problem] : []));
+  const problems = outcomes.flatMap((o) => (o.problem === null ? [] : [o.problem]));
   deps.store.getState().setNotice(problems.length > 0 ? problems.join(' ') : doneNotice);
 }
 

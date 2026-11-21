@@ -1,4 +1,4 @@
-import { strToU8, zipSync } from 'fflate';
+import { strToU8, unzipSync, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { setLayerImage } from '../core/commands/command';
 import { addFeature } from '../core/commands/features';
@@ -65,7 +65,7 @@ describe('saving and opening project files', () => {
     expect(target.store.getState().notice).toContain('img1.png is missing');
   });
 
-  it('reports unreadable photos and photos of the wrong size', async () => {
+  it('keeps photos it cannot show, so saving again does not drop them', async () => {
     const project = editedDeps().store.getState().project;
     for (const [content, message] of [
       ['broken', 'Could not read the photo'],
@@ -77,7 +77,10 @@ describe('saving and opening project files', () => {
       ]);
       await openProjectFile(target, { bytes, name: 'a.pcbrt' });
       expect(target.store.getState().notice).toContain(message);
-      expect(target.images.get('img1')).toBeUndefined();
+      expect(target.store.getState().notice).toContain('stays in the project file');
+      expect(target.images.get('img1')?.tiles).toEqual([]);
+      const resaved = unzipSync(saved(target).bytes);
+      expect(Array.from(resaved['images/img1.png'] ?? [])).toEqual(Array.from(photoBytes(content)));
     }
   });
 
