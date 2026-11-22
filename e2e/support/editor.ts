@@ -87,3 +87,14 @@ export async function save(page: Page): Promise<{ name: string; bytes: Uint8Arra
   const file = await download;
   return { name: file.suggestedFilename(), bytes: await readFile(await file.path()) };
 }
+
+/**
+ * Draws a via to size with the active Via tool (SPEC F7): presses at its centre and releases
+ * at its edge, in screen pixels. The first via of a session must be drawn this way.
+ */
+export async function drawVia(page: Page, centre: ScreenPoint, edge: ScreenPoint): Promise<void> {
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.down();
+  await page.mouse.move(edge.x, edge.y, { steps: 4 });
+  await page.mouse.up();
+}

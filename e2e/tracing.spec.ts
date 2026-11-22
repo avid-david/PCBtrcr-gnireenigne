@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { drawVia } from './support/editor';
 
 // The board view starts at 4 px/mm with the board origin at its top-left corner, so board
 // positions can be clicked directly.
@@ -54,12 +55,20 @@ async function colorAt(page: Page, p: Mm): Promise<number[]> {
   }, s);
 }
 
+/**
+ * A fresh session knows no via size, so the via is drawn to size (SPEC F7): 1 mm from its
+ * centre, a 2 mm pad with a 1 mm drill.
+ */
+async function drawTheVia(page: Page): Promise<void> {
+  await drawVia(page, await screenOf(page, VIA), await screenOf(page, { x: VIA.x + 1, y: VIA.y }));
+}
+
 async function drawBoard(page: Page): Promise<void> {
   await page.keyboard.press('p');
   await clickAt(page, PAD_A);
   await clickAt(page, PAD_B);
   await page.keyboard.press('v');
-  await clickAt(page, VIA);
+  await drawTheVia(page);
   await page.keyboard.press('t');
   for (const p of [PAD_A, BEND, VIA]) {
     await clickAt(page, p);
@@ -92,7 +101,8 @@ test('traces a small two-sided board; nets join through the via; undo/redo split
   // Clear the selection (click empty board) and compare drawn net colours on the top layer.
   await clickAt(page, { x: 5, y: 60 });
   await expect(page.getByLabel('Net')).toHaveCount(0);
-  const viaColor = await colorAt(page, { x: VIA.x + 0.2, y: VIA.y });
+  // Sample the via's copper ring, between its drill (0.5 mm) and pad (1 mm) radius.
+  const viaColor = await colorAt(page, { x: VIA.x + 0.75, y: VIA.y });
   const padAColor = await colorAt(page, PAD_A);
   const padBColor = await colorAt(page, PAD_B);
   // The background is (21, 23, 26); make sure the samples really hit copper.
@@ -111,7 +121,7 @@ test('traces a small two-sided board; nets join through the via; undo/redo split
 test('a trace snaps to anchors and Esc throws away an unfinished one', async ({ page }) => {
   await page.goto('/');
   await page.keyboard.press('v');
-  await clickAt(page, VIA);
+  await drawTheVia(page);
   await page.keyboard.press('t');
   await clickAt(page, { x: VIA.x + 1, y: VIA.y + 1 });
   await clickAt(page, { x: 10, y: 10 });
