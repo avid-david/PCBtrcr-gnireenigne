@@ -19,7 +19,7 @@ and bottom photos, align them, trace copper features, and let the tool derive an
 | Fit to view | `Home` or **Fit to view** |
 | Overlay | **Overlay opacity** slider: how strongly the inactive layer shows over the active one |
 | Per layer | **Show photo**, **Show copper**, **Show silkscreen**, **Show notes**, **Mirror horizontally** (the bottom photo starts mirrored) |
-| Tools | Select `S`, Trace `T`, Via `V`, Pad `P`, Connection point `C`, Hole `H`, Component `U`, Plane `L`, Silkscreen `K`, Text `X`, Align `A` (left toolbar) |
+| Tools | Left toolbar, in groups: Select `S` · **Connections** Trace `T`, Via `V`, Pad `P`, Connection point `C`, Hole `H`, Plane `L` · **Components** Component `U` · **Annotations** Silkscreen `K`, Text `X` · **Align** `A`. `Shift` + a key works like the key unless it has its own shortcut |
 | Rotate / flip | `R` / `F` on selected components, or while placing one |
 | Units | **mm / mil** in the header (lengths are stored in mm; typing `10mil` or `0.25mm` works in either) |
 | Shortcuts | `?` or the **?** button lists every shortcut |
@@ -45,7 +45,12 @@ Tip: set **Overlay opacity** to 0 % while clicking, so only the active photo is 
 - **Trace** (`T`): click to add points, double-click or `Enter` to finish, `Backspace` removes the last
   point, `Esc` cancels. Points snap to pads, vias, holes, points and trace ends within 10 px; a snapped
   end is tied to that anchor and follows it when it moves.
-- **Via / Pad / Point / Hole** (`V` `P` `C` `H`): click to place with the sizes shown in the side panel.
+- **Via** (`V`): press on the centre of a via in the photo and drag to its edge; the via gets that
+  size, which becomes the default, and later clicks place vias of that size. The first via of a
+  session must be drawn this way (or set a size in the side panel first); opening a project with
+  vias uses its newest via's size. `Shift+V` arms the tool again to draw the next via to size; `Esc`
+  cancels a drag, or disarms. The drill keeps the default drill-to-pad ratio.
+- **Pad / Point / Hole** (`P` `C` `H`): click to place with the sizes shown in the side panel.
   SMD pads and points go on the active layer; vias, plated holes and through-hole pads join both layers.
 - **Select** (`S`): click (Shift adds), drag to move, drag on empty board to box-select, `Delete`
   removes. The side panel edits the selected feature and shows its net; the sizes you set become the

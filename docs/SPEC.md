@@ -130,6 +130,7 @@ them without touching tool code.
   Via `V`, Pad `P`, Connection point `C`, Hole `H`, Plane `L`) · **Components** (Component `U`) ·
   **Annotations** (Silkscreen `K`, Text `X`) · **Measure** (Continuity `M`, F10) · **Align** (`A`). A tool
   declares its group when it is registered. No fly-out menus: every tool stays one click and one key away.
+  A group without a registered tool is not shown (Measure appears with the Continuity tool in M11).
 - Shortcuts may use Shift + key. A Shift + letter with no binding of its own acts as the plain letter
   (as today), so holding Shift by accident does not lose a shortcut.
 - **Via tool**
@@ -140,7 +141,8 @@ them without touching tool code.
     pad becomes the new default, and its drill = pad × (default drill ÷ default pad), rounded to
     0.01 mm. The pad is clamped to 0.1–10 mm; the radius does not snap to the grid.
   - **Armed:** while no via size is known in this session, a click does not place anything and the hint
-    asks the user to drag from the centre of a via to its edge. A size is known after a drawn via, after
+    asks the user to drag from the centre of a via to its edge; no ghost via is shown while armed and not
+    dragging. A size is known after a drawn via, after
     an inspector edit of a via or of the via defaults, or after loading a project that has vias (the
     newest via's size becomes the default).
   - `Shift+V` picks the Via tool armed, also when it is already active, so the next via is drawn to size.
@@ -150,7 +152,9 @@ them without touching tool code.
   keeps its ratio), with a live preview, as one undo step. The new size becomes the tool default, like
   an inspector edit. The handle wins over feature hits under it. Same clamps as drawing.
 - Edge cases: a drag that ends on the centre gives the minimum size. A drag interrupted by a layer
-  switch (`Tab`) is dropped. The drill always stays smaller than the pad.
+  switch (`Tab`) is dropped. The drill always stays smaller than the pad and at least 0.01 mm: after
+  rounding it is clamped to 0.01 mm … the largest 0.01 mm step below the pad (a 0.1 mm pad gets at most
+  0.09 mm).
 - Shortcuts: `Shift+V` (Via tool, armed).
 
 ### F8. Object types: visibility and selectability
@@ -294,8 +298,8 @@ What M7–M14 change in what M0–M6 do, and which existing tests must change wi
 | Milestone | Change | Existing tests that must change, and why |
 | --- | --- | --- |
 | M7 | Shift + letter becomes its own key combination (falling back to the plain letter when unbound). | `src/ui/shortcuts.test.tsx` "names key combinations with Ctrl and Shift, ignoring Alt" expects Shift+T to give `t`; it will give `Shift+t`. |
-| M7 | Vias are placed on release, not on press; a click while the Via tool is armed places nothing. | `src/ui/shortcuts.test.tsx` "selects tools, toggles the grid, and undoes/redoes" sends only a pointerdown. `src/tools/placeSelect.test.ts` "place one feature per click with the current defaults and select it" and "show a ghost under the cursor, snapped to the grid" start in a fresh, armed session. E2E `tracing.spec.ts`, `nets.spec.ts` and `persistence.spec.ts` place vias by click; their first via must be drawn by drag, or the test must start with a known via size. `nets.spec.ts` also checks that the default 0.3 mm drill shows as 11.81 mil, which depends on that default. |
-| M7 | The flat toolbar becomes grouped and gains a tool. | `e2e/shell.spec.ts` "fits 1366×768" must still pass (a check, not a rewrite; spacing may need tightening). |
+| M7 | Vias are placed on release, not on press; a click while the Via tool is armed places nothing. | `src/ui/shortcuts.test.tsx` "selects tools, toggles the grid, and undoes/redoes" sends only a pointerdown. `src/tools/placeSelect.test.ts` "place one feature per click with the current defaults and select it", "show a ghost under the cursor, snapped to the grid" and "runs the active tool generically" (it sends only a pointerdown to the Via tool) start in a fresh, armed session. `src/render/scene.test.ts` "outlines the selection and shows what the tool is doing" builds a via tool state without the new fields and expects a ghost with the armed default settings. E2E `tracing.spec.ts`, `nets.spec.ts` and `persistence.spec.ts` place vias by click; their first via must be drawn by drag, or the test must start with a known via size. `nets.spec.ts` also checks that the default 0.3 mm drill shows as 11.81 mil, which depends on that default. |
+| M7 | The flat toolbar becomes grouped (Plane moves into Connections); groups without tools are hidden until their tool exists. | `e2e/shell.spec.ts` "fits 1366×768" must still pass (a check, not a rewrite; spacing may need tightening). |
 | M10 | Per-layer copper / silkscreen / notes toggles become object rows. Hidden features can no longer be selected or snapped to. Vias and holes get their own rows instead of following the active layer's toggles ([ADR 0007](adr/0007-footprints-components-planes.md)). | `src/ui/componentPanels.test.tsx` "shows and hides copper, silkscreen and notes per layer" (the toggles are gone). `src/render/featureScene.test.ts` "hides copper, silkscreen and notes per layer" and "reuses the result until the project, layer or visibility changes" (`hiddenContent` is replaced). |
 | M12 | `Component` and its pads gain fields; project file version 4. | `src/core/io/fixtures.test.ts` gains the version 4 fixture, and the version 3 fixture must load as version 4. `src/ui/componentPanels.test.tsx` "edits designator, value and rotation, and rotates or flips" covers more fields. The builders in `src/core/model/features.test-support.ts` need the new fields. `src/core/io/projectFile.test.ts` follows `CURRENT_SCHEMA_VERSION` and should pass unchanged. |
 | M13 | The flat Footprint list becomes the category picker; the default designator prefix comes from the part type. | `src/ui/componentPanels.test.tsx` "chooses a family, resets its parameters and prefix, and refuses out-of-range values". `src/tools/newTools.test.ts` "places the chosen footprint with the next designator, pads with fresh ids" (`settings.component` gains a part type). E2E `components.spec.ts` helper `chooseFootprint` selects from the old list. |
@@ -307,6 +311,7 @@ short demo note. Ordered by dependency, then value: M7–M9 build on the via too
 because probes respect visibility, and M12 → M13 → M14 go from fields to picker to BOM.
 
 #### M7 — Tool groups, Shift shortcuts, via sizing
+- **Status:** done ([ADR 0009](adr/0009-tool-groups-shift-shortcuts-via-sizing.md)).
 - **Scope:** F7 without resize handles: grouped toolbar, Shift + key shortcuts, drawing a via to size,
   the armed state, `Shift+V`.
 - **Done when:** the toolbar shows the groups; dragging from a via's centre sets its size and the default;

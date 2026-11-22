@@ -22,7 +22,7 @@ src/
     geometry/     vectors, transforms, homography, viewport, tiling, hit-testing
     model/        Project, Layer, Feature types, Net, ids, image metadata
     alignment/    image pixels → board mm (the only place pixels are converted)
-    view/         view state: active layer, viewport, overlay (not saved, not commands)
+    view/         view state: active layer, viewport, overlay, display units (not saved, not commands)
     connectivity/ net derivation (union-find)
     commands/     undoable commands + history
     footprints/   footprint schema + parametric generators
