@@ -12,6 +12,9 @@ All notable changes to PCB Reverse Tracer. The format follows
   `Shift` + key shortcuts (falling back to the plain key); draw a via to size by dragging from its
   centre to its edge, after which clicks place vias of that size; `Shift+V` draws the next via to
   size.
+- **Landmarks from overlapping vias (M9):** a via placed over an existing via, with photos on both
+  layers, offers to use the pair as an alignment landmark ("same via?"). Accepting removes the new
+  via and adds a matched point in one undo step. The offer can be turned off in the Align panel.
 
 ### Changed
 

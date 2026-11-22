@@ -1,3 +1,4 @@
+import type { LandmarkOffer } from '../core/alignment/landmarks';
 import type { Command } from '../core/commands/command';
 import { execute, redo, undo, type History, type Step } from '../core/commands/history';
 import { withNetStyles } from '../core/commands/netStyles';
@@ -19,6 +20,11 @@ export interface EditorData {
   readonly tool: ActiveTool;
   readonly selection: readonly FeatureId[];
   readonly settings: ToolSettings;
+  /**
+   * The landmark offered for the via just placed (SPEC F9), or `null`. Any edit, undo or redo
+   * withdraws it, because it refers to the project as it was right after the placement.
+   */
+  readonly landmarkOffer: LandmarkOffer | null;
 }
 
 /** The align-mode state when the align tool is active. */
@@ -70,6 +76,7 @@ export function applyCommands(
     ...step,
     selection: pruneSelection(s.selection, step.project),
     tool: reconcileTool(s.tool, s.project, step.project),
+    ...(step.project === s.project ? {} : { landmarkOffer: null }),
     ...(notice === null ? {} : { notice }),
   };
 }
@@ -84,6 +91,7 @@ export function travel(s: EditorData, direction: 'undo' | 'redo'): Partial<Edito
     ...step,
     selection: pruneSelection(s.selection, step.project),
     tool: activate(s.tool.id),
+    landmarkOffer: null,
   };
 }
 
@@ -102,5 +110,6 @@ export function sendToTool(
     selection: pruneSelection(result.selection ?? edited.selection ?? s.selection, project),
     view: layer === null ? s.view : setActiveLayer(s.view, project, layer),
     ...(result.settings === undefined ? {} : { settings: result.settings }),
+    ...(result.landmark === undefined ? {} : { landmarkOffer: result.landmark }),
   };
 }

@@ -158,6 +158,25 @@ function LayerPoints({ layer }: { layer: Layer }) {
   );
 }
 
+/** The per-browser preference for landmark offers from overlapping vias (SPEC F9). */
+function LandmarkPreference() {
+  const store = useEditorStore();
+  const offer = useEditor((s) => s.settings.offerLandmarks);
+  return (
+    <label>
+      <input
+        type="checkbox"
+        checked={offer}
+        onChange={(e) => {
+          const offerLandmarks = e.target.checked;
+          store.getState().updateSettings((s) => ({ ...s, offerLandmarks }));
+        }}
+      />{' '}
+      Offer landmarks from overlapping vias
+    </label>
+  );
+}
+
 /** Side panel content while align mode is on. */
 export function AlignPanel() {
   const hint = useEditor((s) =>
@@ -169,6 +188,7 @@ export function AlignPanel() {
       <h2 className="panel__title">Alignment</h2>
       <BoardSize />
       <ModeSwitch />
+      <LandmarkPreference />
       <p className="align-panel__hint" role="status" aria-label="Alignment hint">
         {hint}
       </p>

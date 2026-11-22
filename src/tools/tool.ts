@@ -1,3 +1,4 @@
+import type { LandmarkOffer } from '../core/alignment/landmarks';
 import type { Command } from '../core/commands/command';
 import type { Rect } from '../core/geometry/rect';
 import type { Vec2 } from '../core/geometry/vec2';
@@ -48,6 +49,8 @@ export interface ToolResult<S> {
   readonly activateLayer: LayerId | null;
   /** New tool defaults, e.g. the size of a via drawn to size (SPEC F7); absent keeps them. */
   readonly settings?: ToolSettings;
+  /** A via placed over another one: the landmark to offer, or `null` for none (SPEC F9). */
+  readonly landmark?: LandmarkOffer | null;
 }
 
 /** What a tool wants drawn on top of the board while it works (board mm). */
