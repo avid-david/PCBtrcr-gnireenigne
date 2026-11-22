@@ -31,6 +31,7 @@ export const toolContext = (s: EditorData, newId: () => string): ToolContext => 
   activeLayerId: s.view.activeLayerId,
   selection: s.selection,
   settings: s.settings,
+  units: s.view.units,
   newId,
 });
 

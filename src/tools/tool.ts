@@ -3,7 +3,14 @@ import type { Rect } from '../core/geometry/rect';
 import type { Vec2 } from '../core/geometry/vec2';
 import type { Feature, FeatureId } from '../core/model/features';
 import type { LayerId, Project } from '../core/model/project';
+import type { LengthUnit } from '../core/view/units';
 import type { ToolSettings } from './settings';
+
+/**
+ * How close (screen pixels) a click must be to hit or snap to something. Pointer events carry it
+ * in mm as `hitRadiusMm`, so tools can turn other screen distances into mm too.
+ */
+export const HIT_RADIUS_PX = 10;
 
 /** Input for a tool, already converted to board mm by the UI. */
 export type ToolEvent =
@@ -26,6 +33,8 @@ export interface ToolContext {
   readonly activeLayerId: LayerId;
   readonly selection: readonly FeatureId[];
   readonly settings: ToolSettings;
+  /** Unit lengths are shown in (hints). */
+  readonly units: LengthUnit;
   readonly newId: () => string;
 }
 

@@ -55,6 +55,7 @@ export const contextOf = <S>(
   activeLayerId: d.activeLayerId,
   selection: d.selection,
   settings,
+  units: 'mm',
   newId,
 });
 
