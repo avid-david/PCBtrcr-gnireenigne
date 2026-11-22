@@ -8,7 +8,7 @@ features, connectivity, undo and tools in [ADR 0005](adr/0005-features-connectiv
 the project file and autosave in [ADR 0006](adr/0006-project-file-and-autosave.md), 
 footprints, components, planes, text and silkscreen in [ADR 0007](adr/0007-footprints-components-planes.md),
 net names, colours, locks and exporters in [ADR 0008](adr/0008-net-styles-and-exporters.md),
-and tool groups, Shift shortcuts and drawing vias to size in
+and tool groups, Shift shortcuts, drawing vias to size and resize handles in
 [ADR 0009](adr/0009-tool-groups-shift-shortcuts-via-sizing.md).
 
 ## Layers
@@ -28,8 +28,8 @@ Dependencies point inward. Arrows mean "may import".
 | Folder | Contents | May import | Exists since |
 | --- | --- | --- | --- |
 | `src/core/` | Pure domain logic: geometry, model (incl. copper features), alignment, connectivity, view, commands and undo history, io (project file format, versions, migrations, zip archive), footprints (JSON parts and parametric families), export (netlist exporters). No DOM, React, PixiJS or browser APIs. | nothing outside `core` | M0 |
-| `src/tools/` | Interaction state machines: pan/zoom navigation, and the registered editing tools (select, trace, via, pad, point, hole, plane, component, silkscreen, text, align), each declaring its toolbar group, with snapping. They return commands (and, like a via drawn to size, new tool defaults), never mutate. | `core` | M1 |
-| `src/render/` | `buildScene` (state → what to draw, incl. outline and alignment markers), the `Renderer` interface and its PixiJS implementation. Reads state, never mutates it. | `core`, `tools` (not `ui`) | M1 |
+| `src/tools/` | Interaction state machines: pan/zoom navigation, and the registered editing tools (select, trace, via, pad, point, hole, plane, component, silkscreen, text, align), each declaring its toolbar group, with snapping, and the Select tool's resize handles (`resizeHandle.ts`). They return commands (and, like a via drawn to size or resized, new tool defaults), never mutate. | `core` | M1 |
+| `src/render/` | `buildScene` (state → what to draw, incl. outline, alignment markers and the resize handle), the `Renderer` interface and its PixiJS implementation. Reads state, never mutates it. | `core`, `tools` (not `ui`) | M1 |
 | `src/ui/` | React components and the Zustand editor store. Thin: dispatch commands, show state, turn DOM events into tool inputs. | `core`, `tools` (not `render`) | M0 |
 | `src/platform/` | Image decoding, file download, key-value storage (IndexedDB) for autosave, per-browser preferences (later clipboard); browser vs desktop adapters. | `core` | M1 |
 | `src/app/` | Composition root: creates the store, image registry and renderer and wires them together; open/save (`projectFiles`), autosave and recovery (`autosave`, `persistence`). Nothing imports it. | everything | M0 |

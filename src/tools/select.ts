@@ -1,11 +1,19 @@
 import { flipComponents, oppositeLayer, rotateComponents } from '../core/commands/components';
 import { moveFeatures, removeFeatures } from '../core/commands/features';
-import { isFeatureLocked } from '../core/connectivity/netStyles';
 import { distance, rectBetween } from '../core/geometry/distance';
 import { sub, type Vec2 } from '../core/geometry/vec2';
-import { featureBounds, featureDistance, featureOnLayer } from '../core/model/featureKinds';
+import { featureBounds, featureDistance } from '../core/model/featureKinds';
 import type { Feature, FeatureId } from '../core/model/features';
 import type { Project } from '../core/model/project';
+import {
+  editable,
+  followHandle,
+  grabHandle,
+  releaseHandle,
+  resizeHint,
+  resizePreview,
+  type Resizing,
+} from './resizeHandle';
 import { snapToGrid } from './snap';
 import {
   NO_OVERLAY,
@@ -17,7 +25,10 @@ import {
   type ToolResult,
 } from './tool';
 
-/** Select tool: idle, pressed on a feature (may become a move), moving, or dragging a box. */
+/**
+ * Select tool: idle, pressed on a feature (may become a move), moving, dragging a box, or
+ * dragging a resize handle.
+ */
 export type SelectState =
   | { readonly mode: 'idle' }
   | { readonly mode: 'pressing'; readonly start: Vec2; readonly ids: readonly FeatureId[] }
@@ -32,16 +43,10 @@ export type SelectState =
       readonly start: Vec2;
       readonly current: Vec2;
       readonly additive: boolean;
-    };
+    }
+  | Resizing;
 
 const IDLE: SelectState = { mode: 'idle' };
-
-/**
- * Inactive-layer features are not editable; features on every layer always are (SPEC). Features
- * of a locked net cannot be selected at all, so they cannot be moved or deleted (docs/adr/0008).
- */
-const editable = (f: Feature, ctx: ToolContext): boolean =>
-  featureOnLayer(f, ctx.activeLayerId) && !isFeatureLocked(ctx.project, f);
 
 /**
  * Which hit wins, matching how features are drawn: planes lie under everything, traces over
@@ -71,6 +76,10 @@ const select = (state: SelectState, selection: readonly FeatureId[]): ToolResult
 });
 
 function onPointerDown(ctx: ToolContext, at: Vec2, e: { hitRadiusMm: number; shift: boolean }) {
+  const grabbed = grabHandle(ctx, at, e.hitRadiusMm);
+  if (grabbed !== null) {
+    return stateOnly<SelectState>(grabbed);
+  }
   const hit = hitFeature(ctx, at, e.hitRadiusMm);
   if (hit === null) {
     return stateOnly<SelectState>({ mode: 'boxing', start: at, current: at, additive: e.shift });
@@ -86,7 +95,11 @@ function onPointerDown(ctx: ToolContext, at: Vec2, e: { hitRadiusMm: number; shi
   return select(next, selection);
 }
 
-function onPointerMove(s: SelectState, e: { board: Vec2; hitRadiusMm: number }, ctx: ToolContext) {
+function onPointerMove(
+  s: Exclude<SelectState, Resizing>,
+  e: { board: Vec2; hitRadiusMm: number },
+  ctx: ToolContext,
+) {
   const at = e.board;
   const radiusMm = e.hitRadiusMm;
   if (s.mode === 'boxing') {
@@ -160,15 +173,34 @@ const selectKeys: Readonly<Record<string, (ctx: ToolContext) => ToolResult<Selec
   })),
 };
 
+/** Ends a resize: one undo step, and the new size becomes the default (SPEC F7). */
+function onResizeUp(s: Resizing, ctx: ToolContext): ToolResult<SelectState> {
+  const done = releaseHandle(s, ctx);
+  return done === null
+    ? stateOnly(IDLE)
+    : { ...stateOnly<SelectState>(IDLE), commands: [done.command], settings: done.settings };
+}
+
 const handlers: ToolHandlers<SelectState> = {
   pointerdown: (_s, e, ctx) => onPointerDown(ctx, e.board, e),
-  pointermove: (s, e, ctx) => onPointerMove(s, e, ctx),
-  pointerup: (s, _e, ctx) => onPointerUp(s, ctx),
+  pointermove: (s, e, ctx) =>
+    s.mode === 'resizing'
+      ? stateOnly(followHandle(s, e.board, ctx) ?? IDLE)
+      : onPointerMove(s, e, ctx),
+  pointerup: (s, _e, ctx) => (s.mode === 'resizing' ? onResizeUp(s, ctx) : onPointerUp(s, ctx)),
   key: (s, e, ctx) => selectKeys[e.key]?.(ctx) ?? stateOnly(s),
   cancel: () => stateOnly(IDLE),
 };
 
-/** Select/move tool (SPEC F3): click, Shift-click, box-select, drag to move, Delete. */
+/** The project as drawn while features are dragged or resized. */
+function previewOf(state: SelectState, project: Project): Project {
+  if (state.mode === 'moving') {
+    return moveFeatures(state.ids, state.delta).execute(project);
+  }
+  return state.mode === 'resizing' ? resizePreview(state, project) : project;
+}
+
+/** Select/move tool (SPEC F3, F7): click, Shift-click, box-select, drag to move, resize handles, Delete. */
 export const selectTool: Tool<SelectState> = {
   label: 'Select',
   shortcut: 's',
@@ -176,10 +208,11 @@ export const selectTool: Tool<SelectState> = {
   cursor: 'default',
   initial: IDLE,
   step: handle(handlers),
-  hint: () =>
-    'Click to select (Shift adds), drag to move, drag on empty board to box-select, Delete removes, R rotates and F flips components.',
-  preview: (state: SelectState, project: Project) =>
-    state.mode === 'moving' ? moveFeatures(state.ids, state.delta).execute(project) : project,
+  hint: (state, ctx) =>
+    state.mode === 'resizing'
+      ? resizeHint(state, ctx)
+      : 'Click to select (Shift adds), drag to move, drag on empty board to box-select, Delete removes, R rotates and F flips components. Drag the round handle of a selected via, hole or point to resize it.',
+  preview: (state: SelectState, project: Project) => previewOf(state, project),
   overlay: (state) => ({
     ...NO_OVERLAY,
     box: state.mode === 'boxing' ? rectBetween(state.start, state.current) : null,

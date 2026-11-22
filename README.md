@@ -54,7 +54,10 @@ Tip: set **Overlay opacity** to 0 % while clicking, so only the active photo is 
   SMD pads and points go on the active layer; vias, plated holes and through-hole pads join both layers.
 - **Select** (`S`): click (Shift adds), drag to move, drag on empty board to box-select, `Delete`
   removes. The side panel edits the selected feature and shows its net; the sizes you set become the
-  defaults for the next one.
+  defaults for the next one. A single selected via, hole or point shows a round handle on its right
+  edge: drag it to resize (one undo step; the size becomes the default, and a via keeps its
+  drill-to-pad ratio). The handle appears once the feature is at least 8 px in radius on screen;
+  zoom in, or use the side panel, for smaller ones.
 - Everything electrically connected shares one colour. Features on the inactive layer are dimmed and
   can only be edited from their own layer.
 

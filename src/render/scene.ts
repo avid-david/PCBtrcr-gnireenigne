@@ -8,6 +8,7 @@ import type { FeatureId } from '../core/model/features';
 import type { ImageId, Layer, LayerId, Project } from '../core/model/project';
 import { isPhotoVisible, type ViewState } from '../core/view/viewState';
 import { toolOverlay, toolPreview, type ActiveTool } from '../tools/registry';
+import { handlePosition } from '../tools/resizeHandle';
 import type { ToolSettings } from '../tools/settings';
 import type { ToolOverlay } from '../tools/tool';
 import { alignMarkers, boardOutline, type SceneMarker } from './alignOverlay';
@@ -35,6 +36,8 @@ export interface Scene {
   readonly texts: readonly TextItem[];
   /** Bounds of selected features, for the highlight. */
   readonly selection: readonly Rect[];
+  /** Where the Select tool's resize handle is (board mm), or `null` for none (SPEC F7). */
+  readonly handle: Vec2 | null;
   /** Alignment points (align tool only). */
   readonly markers: readonly SceneMarker[];
   readonly toolOverlay: ToolOverlay;
@@ -90,6 +93,10 @@ export function buildScene(input: SceneInput): Scene {
     features: features.drawables,
     texts: features.texts,
     selection: selectedFeatures(project, input.selection).map((f) => featureBounds(f, project)),
+    handle:
+      tool.id === 'select'
+        ? handlePosition(tool.state, { ...ctx, project }, 1 / view.viewport.zoom)
+        : null,
     markers: tool.id === 'align' ? alignMarkers(project, tool.state, view.activeLayerId) : [],
     toolOverlay: toolOverlay(tool, ctx),
   };
