@@ -35,6 +35,9 @@ Engineering rules: [CLAUDE.md](../CLAUDE.md).
 | **BOM** | Bill of materials: the placed components grouped into lines with a quantity. Derived, never stored. |
 | **Find** | Searching components, pins and nets by name and jumping to the result (F14). |
 | **Ruler** | The Measure tool that shows the distance between two board points (F15). Not saved. |
+| **Board check** | A list of likely tracing mistakes found in the project, e.g. a pin connected to nothing (F16). Derived, never stored. |
+| **Finding** | One row of the board check: the rule that found it, a short text and the feature it points at. |
+| **View orientation** | How the screen shows board space: seen from the top or from below, turned by 0°, 90°, 180° or 270° (F17). View state; board space never changes. |
 
 ## Core concepts and rules
 
@@ -43,6 +46,8 @@ Engineering rules: [CLAUDE.md](../CLAUDE.md).
 - The bottom photo is taken from below, so on import it is **mirrored horizontally** by default (toggle
   available). Mirroring is part of its alignment transform, not a pixel edit.
 - Display units: mm or mil (user setting); storage is always mm.
+- The screen may show the board from below or turned by quarter turns (F17). That is a view setting:
+  board space, stored positions and every number the user reads or types stay as seen from the top.
 
 ### Connectivity (the heart of the tool)
 - Connections are **explicit**: a trace vertex snapped to a pad/via/another trace vertex is bound to that
@@ -310,6 +315,73 @@ two places and tends to place a second via next to the first one. That is a free
   the measurement at its last position.
 - Shortcuts: `Shift+M`.
 
+### F16. Board check
+A list of places where the tracing is probably unfinished or wrong, so the user can work through them
+instead of searching the board by eye.
+
+- New side panel tab **Check** (Layers · Nets · Parts · Check). Its label shows the number of findings,
+  e.g. "Check (7)".
+- Rules are a registry (id, label, a pure function from the project and its nets to findings); adding a
+  rule is adding an entry. Starter rules, in this order:
+
+  | Rule | Finds | Example text |
+  | --- | --- | --- |
+  | Unconnected pin | A component pad that is alone in its net: no trace, via, plane or other pad joins it. | "U3 pin 5 (SDA) is not connected" |
+  | Touching, not connected | A trace end that lies on another anchor of the same layer (inside a pad's shape, a via's pad, a plated hole, a connection point, or within half the larger trace width of another trace's vertex) and is not in that anchor's net. | "Trace end lies on U3 pin 5 but is not connected to it" |
+  | Open trace end | The first or last vertex of a trace that is free and that no other trace vertex binds to and no plane attaches, and that no "Touching, not connected" finding already covers. | "Trace end at (12.40, 8.10) connects to nothing" |
+  | Unused via | A via or plated hole that is alone in its net. | "Via at (30.00, 4.25) connects nothing" |
+  | Designator | A component with an empty designator, or a designator used more than once (the same rule as the BOM flag, F13). | "R3 used twice" · "Component without designator" |
+
+- Rows are grouped by rule, with a count per group, and ordered within a group by natural designator
+  order, then by position (top to bottom, then left to right, seen from the top). Each row shows the
+  text and the side (top, bottom, both). Positions are in display units.
+- Each group has a checkbox that shows or hides its rows and their share of the tab's count. Everything
+  is shown by default. This is view state: not saved, not undoable.
+- Clicking a row, or `Enter` on a focused row, **jumps** as Find does (F14): the view frames the feature,
+  it becomes the selection (the component for a pin finding, the trace for a trace-end finding) and its
+  side becomes the active layer. A hidden object type is turned back on and the status bar says so.
+  Members of a locked net are framed, not selected.
+- The list is recomputed after every edit (including undo) while the tab is shown, and not at all while
+  it is hidden. An empty list says "No findings".
+- Findings are hints, not errors: a pin with no connection can be correct (an unused pin). Nothing blocks
+  saving or exporting. The findings are not saved and not exported.
+- Hidden features (F8) are still checked; the check works on the project, not on what is drawn.
+- Edge cases: a bound trace end is never open. Two free trace ends at the same place that are not bound
+  give one "Touching, not connected" finding, not two. A trace end inside a plane's outline is not
+  reported as touching (plane containment is not automatic, see *Connectivity*), but it is reported as
+  open if nothing attaches it. Mechanical holes are never reported.
+
+### F17. View from below and view rotation
+Lets the user look at the board as if it were turned over or turned around in the hand, so the bottom
+photo reads naturally and a long board fits the screen. Only the screen changes: board space, stored
+positions and every number shown or typed stay as seen from the top.
+
+- **View from below** (`B`, or the "Seen from" switch in the header: Top · Below) mirrors the board view
+  horizontally. The board point at the centre of the board view stays there.
+- **Rotate view**: `.` turns the view 90° clockwise, `,` 90° counter-clockwise, about the centre of the
+  board view. There are four positions (0°, 90°, 180°, 270°).
+- The orientation does not depend on the active layer: `Tab` still only switches the layer.
+- When the orientation is not "top, 0°", the status bar shows it, e.g. "Seen from below · 90°". Clicking
+  it returns to top, 0°.
+- Everything drawn in board space follows: photos, features, overlay, selection, ghosts, resize handles,
+  alignment markers, continuity markers and the ruler.
+- **Text** reads correctly for the side it is on: seen from below, bottom-side silkscreen and the
+  designators of flipped components read normally, and top-side ones read mirrored. Notes always read
+  normally. Text turns with the view; it is not kept upright.
+- **Input** follows the screen: dragging to the right moves the board to the right, the wheel zooms
+  around the cursor, and a click maps back to the board point under it. Snapping, hit-testing, the 8 px
+  handle rule and the 3 px click threshold are unchanged because they are measured in screen pixels.
+- **Directions**: `R` rotates a component 90° clockwise **as seen on the screen**, so seen from below it
+  turns the other way in board space. The inspector's rotation, the ruler's Δx, Δy and angle, and the
+  hover position stay as seen from the top. When the view is not "top, 0°", the ruler readout adds
+  "(top view axes)".
+- Fit to view (`Home`), Find (F14) and board check jumps (F16) fit in the current orientation; a
+  quarter turn swaps the width and height to fit.
+- Align mode works in any orientation. Its corner prompts name the board corners as seen from the top;
+  when the view is not "top, 0°" the hint says so.
+- View state: not saved, not undoable. Opening a project starts at top, 0°.
+- Shortcuts: `B`, `.`, `,`.
+
 ## Non-functional requirements
 - Smooth interaction (≥ 50 fps pan/zoom) with 2 × 24 MP images and 5 000 features on a mid-range laptop.
 - Works in current Chrome, Edge and Firefox; keyboard- and mouse-driven; usable at 1366×768.
@@ -322,6 +394,7 @@ two places and tends to place a second via next to the first one. That is a free
 - Footprint library — JSON files / generator functions.
 - `Exporter` interface — KiCad, Gerber, SVG, BOM exporters later (BOM planned in F13).
 - `ImageAnalyzer` interface — future automatic via/trace detection.
+- Board check rule registry (F16) — new checks are added as entries.
 - Layer list is an array, not two hard-coded fields, so 4-layer boards are possible later.
 
 ## Milestones
@@ -338,7 +411,7 @@ Each milestone ends with passing CI, updated docs, and a short demo note in the 
 | M6 | F5 nets panel, highlight, netlist export. Polish, shortcuts help overlay. | v0.1.0 release tagged. |
 
 ### Changes to existing behaviour
-What M7–M16 change in what M0–M6 do (and, from M8 on, in what earlier planned milestones do), and which
+What M7–M18 change in what M0–M6 do (and, from M8 on, in what earlier planned milestones do), and which
 existing tests must change with it.
 
 | Milestone | Change | Existing tests that must change, and why |
@@ -353,6 +426,8 @@ existing tests must change with it.
 | M14 | `Exporter` gains a group; the Nets panel shows only netlist exporters; the side panel gets a third tab. | `src/core/export/exporters.test.ts`. `src/ui/netsPanel.test.tsx` "lists nets with members, filters them and exports" and "shows the nets tab and exports through the app". |
 | M15 | `Ctrl+F` opens Find instead of the browser's find in page while the app has focus. | None: no test binds `Ctrl+F`; `src/ui/netsPanel.test.tsx` "opens the shortcuts help with ? or the button, and closes it with Esc" checks with `toContain`, so a new row does not break it. |
 | M16 | `Shift+M` gets its own binding (Ruler) instead of falling back to `M` (Continuity, M11). | Any M11 test that presses `Shift+M` expecting Continuity. `src/ui/shortcuts.test.tsx` "runs the plain key for a Shift combination without a binding of its own" uses `Shift+t` and should pass unchanged. |
+| M17 | The side panel gets a fourth tab (Check). The BOM's duplicate-designator rule (M14) moves into `core` so the board check can share it. | None expected: `src/ui/netsPanel.test.tsx` and `e2e/nets.spec.ts` find tabs by name. M14's duplicate-flag tests should pass unchanged after the move. Re-run `e2e/shell.spec.ts` "layout fits the minimum supported viewport (1366×768) without scrolling" as a check, because four tabs must fit in the panel. |
+| M18 | The board ↔ screen mapping, which was only zoom + offset since M1, gains a mirror and quarter turns. The top view at 0° behaves exactly as before. Which way text reads now depends on the view as well as the side. | `Viewport` gains fields, so the tests that build a viewport literal must add them (or spread `DEFAULT_VIEWPORT`): `src/tools/navigation.test.ts` (the `view` constant), `src/app/importPhoto.test.ts` and `src/ui/useNavigation.test.tsx` "sends left clicks to the align tool in board coordinates; panning still works" (`updateView` with a literal viewport). `src/core/geometry/viewport.test.ts` should pass unchanged for the default orientation; its properties get extended to all eight orientations. `src/render/featureScene.test.ts` text tests and `src/render/scene.test.ts` "carries the viewport and the mirrored image transform" should pass unchanged, because the default view is top, 0°. Re-run `e2e/photos.spec.ts` as a check, because it reads rendered pixels to check mirroring. |
 
 ### Planned milestones
 Same rules as above: one milestone per PR (reviewable in under an hour), passing CI, updated docs and a
@@ -360,6 +435,11 @@ short demo note. Ordered by dependency, then value: M7–M9 build on the via too
 because probes respect visibility, and M12 → M13 → M14 go from fields to picker to BOM. M15 (Find)
 needs M12's pin names and part fields and M10's object rows; M16 (Ruler) needs M11's Measure group. Both
 are ready after M14, and Find comes first because it helps more on a large board.
+M17 (Board check) reuses Find's jump (M15), the BOM's designator rule (M14) and pin names (M12), so it
+comes after them. It comes before M18 because it serves the main goal, a correct netlist, directly.
+M18 (View orientation) depends on nothing new. It comes last because it touches every board ↔ screen
+conversion: landing it after Find, the Ruler and the board check lets their fit and readout rules be
+checked in every orientation at once.
 
 #### M7 — Tool groups, Shift shortcuts, via sizing
 - **Status:** done ([ADR 0009](adr/0009-tool-groups-shift-shortcuts-via-sizing.md)).
@@ -471,6 +551,44 @@ are ready after M14, and Find comes first because it helps more on a large board
 - **ADR:** none (reuses trace snapping and `formatLength`); note the `Shift+M` binding in ADR 0009's
   list of Shift combinations.
 
+#### M17 — Board check
+- **Scope:** F16: the rule registry with the five starter rules, the Check tab with groups, counts and
+  rule checkboxes, and jumping to a finding.
+- **Done when:** on a board with an unconnected pin, an open trace end, a trace end lying on a pad it is
+  not connected to, a lone via and a duplicate designator, the Check tab lists exactly one finding of
+  each kind. Clicking a finding selects and frames its feature. Fixing it (or undoing) updates the list.
+  On the 5 000-feature perf fixture (`pnpm perf`) one check takes under 100 ms.
+- **Tests:** unit (core): each rule on small hand-made projects, including the edge cases in F16 (bound
+  ends, two free ends at one point, trace end inside a plane, mechanical holes, a plane-attached pin),
+  ordering, and the shared designator rule. UI: group checkboxes change the count; `Enter` on a row
+  jumps. Property: "connecting a reported open trace end to an anchor never adds a finding of the same
+  rule", "no finding ever names a feature that is not in the project", "a project whose every anchor is
+  in a net with another anchor has no Unconnected pin or Unused via findings". E2E: on the tracing
+  board, delete the trace to pad C, see "Unconnected pin" in the Check tab, click it, and check that the
+  component is selected; undo and see the finding go away.
+- **Schema:** no change (findings are derived).
+- **ADR:** 0016 (board check: rule registry, what counts as touching, computing only while shown).
+
+#### M18 — View from below and rotation
+- **Scope:** F17: the viewport as zoom + offset + mirror + quarter turns, rendering and input in every
+  orientation, text readability, the header switch, `B` / `.` / `,`, the status bar indicator, and fitting
+  in the current orientation.
+- **Done when:** `B` shows the board from below with the bottom photo reading as in a photo taken from
+  below. `.` and `,` turn the view in quarter turns about the centre. Clicking, snapping, dragging and
+  wheel zoom land on the board point under the cursor in all eight orientations. Bottom silkscreen reads
+  normally from below. `Home` fits a long board in a 90° view. `Tab` still only switches the layer.
+- **Tests:** unit (core): orientation composition, `boardToScreen` / `screenToBoard`, `zoomAt`, `panBy`
+  and `fitToRect` in every orientation; whether a text is mirrored per side and orientation; `R`'s
+  board-space direction seen from below. Property: "`screenToBoard` inverts `boardToScreen` in all eight
+  orientations", "`zoomAt` keeps the board point under the cursor fixed in every orientation", "four `.`
+  presses, or `B` twice, give back the same viewport", "the fitted viewport contains the bounds in every
+  orientation". E2E: on the synthetic photos, press `B` and check by reading pixels that a marker known
+  to be on the left of the top photo is now on the right; place a via while seen from below and check
+  its board position in the inspector.
+- **Schema:** no change (view state).
+- **ADR:** 0017 (view orientation: the viewport as a similarity transform, what stays in top-view axes,
+  text readability rule).
+
 ## Backlog
 Ideas that do not fit yet. Each needs a SPEC section and a milestone before work starts.
 
@@ -486,6 +604,20 @@ Ideas that do not fit yet. Each needs a SPEC section and a milestone before work
 - Resize handles for rectangular pads and for trace width.
 - Automatic plane containment (already noted as a later enhancement).
 - KiCad schematic / PCB export (a v1 non-goal).
+- Board check, later: dismiss a single finding (saved in the project, so a file format change), a
+  "Connect" quick fix for "Touching, not connected", more rules (a component pad overlapping copper of
+  another net, an SMD pad on the wrong side), and exporting the findings.
+- Saved views: store the current view (position, zoom, orientation, F17) in slots 1–9 and recall them
+  with `1`…`9`. The key to store needs a decision: `Ctrl` + digit is taken by the browser's tab switching
+  and zoom reset. Best done after M18.
+- Editing conveniences: nudge the selection with the arrow keys (one grid step; `Shift` for ten), copy
+  and paste with fresh ids that keep the connections inside the copied set, `Shift` while drawing a trace
+  to constrain segments to 45° (as the Ruler does), and double-click on copper to select its whole net.
+- Notes on a single feature and a project to-do list (a file format change).
+- Overlay blink: alternate the two photos automatically at a set rate to spot misalignment.
+- Board summary: counts per feature kind, nets, components and board check findings in one place.
+- Print or PDF of the traced board, coloured by net (next to the printable BOM item above).
+- Project history: restore an earlier autosave or save, beyond the undo history of the session.
 - Datasheet import and automatic part identification: out of scope while the app must work without
   network access and send no data anywhere. The same applies to generated net names, circuit
   explanations and troubleshooting by a remote AI service.
