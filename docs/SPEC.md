@@ -33,6 +33,8 @@ Engineering rules: [CLAUDE.md](../CLAUDE.md).
 | **Pin name** | Optional name of a component pad (e.g. `SDA`, `VBUS`), shown next to its pin number. |
 | **Probe** | One of the two points picked by the continuity check (F10). |
 | **BOM** | Bill of materials: the placed components grouped into lines with a quantity. Derived, never stored. |
+| **Find** | Searching components, pins and nets by name and jumping to the result (F14). |
+| **Ruler** | The Measure tool that shows the distance between two board points (F15). Not saved. |
 
 ## Core concepts and rules
 
@@ -128,8 +130,9 @@ them without touching tool code.
 ### F7. Tool groups, Shift shortcuts and via sizing
 - The toolbar shows tools in labelled groups, separated by a rule: Select · **Connections** (Trace `T`,
   Via `V`, Pad `P`, Connection point `C`, Hole `H`, Plane `L`) · **Components** (Component `U`) ·
-  **Annotations** (Silkscreen `K`, Text `X`) · **Measure** (Continuity `M`, F10) · **Align** (`A`). A tool
-  declares its group when it is registered. No fly-out menus: every tool stays one click and one key away.
+  **Annotations** (Silkscreen `K`, Text `X`) · **Measure** (Continuity `M`, F10; Ruler `Shift+M`, F15) ·
+  **Align** (`A`). A tool declares its group when it is registered. No fly-out menus: every tool stays
+  one click and one key away.
   A group without a registered tool is not shown (Measure appears with the Continuity tool in M11).
 - Shortcuts may use Shift + key. A Shift + letter with no binding of its own acts as the plain letter
   (as today), so holding Shift by accident does not lose a shortcut.
@@ -151,6 +154,9 @@ them without touching tool code.
   shows a round handle on its edge. Dragging the handle sets the diameter (via: the pad, and the drill
   keeps its ratio), with a live preview, as one undo step. The new size becomes the tool default, like
   an inspector edit. The handle wins over feature hits under it. Same clamps as drawing.
+  The handle is shown only while the feature's on-screen radius is at least 8 px, so it never covers
+  the centre of a small via at low zoom: pressing there always moves the feature. To resize a smaller
+  one, zoom in or use the inspector.
 - Edge cases: a drag that ends on the centre gives the minimum size. A drag interrupted by a layer
   switch (`Tab`) is dropped. The drill always stays smaller than the pad and at least 0.01 mm: after
   rounding it is clamped to 0.01 mm … the largest 0.01 mm step below the pad (a 0.1 mm pad gets at most
@@ -265,6 +271,45 @@ two places and tends to place a second via next to the first one. That is a free
 - Only components count; stand-alone pads and connection points are not parts. The BOM is derived from
   the project and never stored.
 
+### F14. Find
+- `Ctrl+F` (or the Find button in the header) opens a find field over the board and focuses it. While
+  the app has focus, `Ctrl+F` replaces the browser's find in page. Typing in the field never triggers
+  shortcuts.
+- The query matches, case-insensitively and as a substring:
+  - **Components**: designator, value, part number, description.
+  - **Pins**: `designator.pin` (e.g. `U3.5`) and pin names (e.g. `SDA`, F11).
+  - **Nets**: the name shown in the Nets panel, including automatic names such as `Net 12`.
+- Results are listed under Components · Pins · Nets, at most 20 per group with "and N more". Within a
+  group, exact matches come first, then matches at the start of a word, then the rest; ties in natural
+  designator / name order. Each row shows a short context, e.g. "U3 · ATmega328P · top" or
+  "Net GND · 14 members".
+- `↑` / `↓` move through the rows, `Enter` or a click jumps to the highlighted one, `Esc` closes the
+  field and gives focus back to the board.
+- **Jump**: the view fits the result's bounds with a 20 % margin, but never zooms in further than a
+  10 mm × 10 mm area would. A component or pin becomes the selection and its side the active layer (as a
+  BOM click, F13). A net is highlighted as from the Nets panel and the view fits all its members.
+- Finding and jumping are view and selection changes: not saved and not undoable.
+- Edge cases: an empty query lists nothing; no match shows "No matches". A result whose object type is
+  hidden (F8) is still listed; jumping to it turns that row's View back on and the status bar says so.
+  Members of a locked net can be found and highlighted, not selected.
+- Shortcuts: `Ctrl+F`.
+
+### F15. Ruler
+- Tool **Ruler** (`Shift+M`, Measure group). The first click sets the start, the second the end; between
+  them a line follows the cursor with a live length.
+- Each end snaps like a trace vertex: to the anchor centre under the cursor (visible features only), then
+  to the grid when it is on. Holding `Shift` constrains the line to multiples of 45°.
+- The readout shows in the hint, the status bar and a label at the line's middle: length, Δx, Δy and
+  angle, in display units (e.g. "2.54 mm · Δx 2.54 · Δy 0.00 · 0°"). When the active layer's alignment
+  has an RMS error, the hint adds it ("alignment RMS 0.12 mm") as a reminder of the accuracy.
+- A finished measurement stays on screen until `Esc`, another tool, or the next click, which starts a new
+  measurement from that point.
+- The ruler measures in board space, so it stays put when the active layer changes. It is tool state:
+  not saved, not an edit, not exported.
+- Edge cases: the same point twice gives "0 mm". A snapped anchor that is deleted (e.g. by undo) leaves
+  the measurement at its last position.
+- Shortcuts: `Shift+M`.
+
 ## Non-functional requirements
 - Smooth interaction (≥ 50 fps pan/zoom) with 2 × 24 MP images and 5 000 features on a mid-range laptop.
 - Works in current Chrome, Edge and Firefox; keyboard- and mouse-driven; usable at 1366×768.
@@ -293,22 +338,28 @@ Each milestone ends with passing CI, updated docs, and a short demo note in the 
 | M6 | F5 nets panel, highlight, netlist export. Polish, shortcuts help overlay. | v0.1.0 release tagged. |
 
 ### Changes to existing behaviour
-What M7–M14 change in what M0–M6 do, and which existing tests must change with it.
+What M7–M16 change in what M0–M6 do (and, from M8 on, in what earlier planned milestones do), and which
+existing tests must change with it.
 
 | Milestone | Change | Existing tests that must change, and why |
 | --- | --- | --- |
 | M7 | Shift + letter becomes its own key combination (falling back to the plain letter when unbound). | `src/ui/shortcuts.test.tsx` "names key combinations with Ctrl and Shift, ignoring Alt" expects Shift+T to give `t`; it will give `Shift+t`. |
 | M7 | Vias are placed on release, not on press; a click while the Via tool is armed places nothing. | `src/ui/shortcuts.test.tsx` "selects tools, toggles the grid, and undoes/redoes" sends only a pointerdown. `src/tools/placeSelect.test.ts` "place one feature per click with the current defaults and select it", "show a ghost under the cursor, snapped to the grid" and "runs the active tool generically" (it sends only a pointerdown to the Via tool) start in a fresh, armed session. `src/render/scene.test.ts` "outlines the selection and shows what the tool is doing" builds a via tool state without the new fields and expects a ghost with the armed default settings. E2E `tracing.spec.ts`, `nets.spec.ts` and `persistence.spec.ts` place vias by click; their first via must be drawn by drag, or the test must start with a known via size. `nets.spec.ts` also checks that the default 0.3 mm drill shows as 11.81 mil, which depends on that default. |
 | M7 | The flat toolbar becomes grouped (Plane moves into Connections); groups without tools are hidden until their tool exists. | `e2e/shell.spec.ts` "fits 1366×768" must still pass (a check, not a rewrite; spacing may need tightening). |
+| M8 | With exactly one via, hole or connection point selected, pressing on its handle resizes it instead of moving it (M3's Select tool moved it from any point on it). | None expected: `src/tools/placeSelect.test.ts` "drags selected features as a preview and moves them with one command on release" presses at the via's centre, and `src/render/scene.test.ts` "outlines the selection and shows what the tool is doing" (one via selected) checks only `scene.selection`, so both should pass unchanged if the handle is a separate scene field. Re-run them as checks. |
 | M10 | Per-layer copper / silkscreen / notes toggles become object rows. Hidden features can no longer be selected or snapped to. Vias and holes get their own rows instead of following the active layer's toggles ([ADR 0007](adr/0007-footprints-components-planes.md)). | `src/ui/componentPanels.test.tsx` "shows and hides copper, silkscreen and notes per layer" (the toggles are gone). `src/render/featureScene.test.ts` "hides copper, silkscreen and notes per layer" and "reuses the result until the project, layer or visibility changes" (`hiddenContent` is replaced). |
 | M12 | `Component` and its pads gain fields; project file version 4. | `src/core/io/fixtures.test.ts` gains the version 4 fixture, and the version 3 fixture must load as version 4. `src/ui/componentPanels.test.tsx` "edits designator, value and rotation, and rotates or flips" covers more fields. The builders in `src/core/model/features.test-support.ts` need the new fields. `src/core/io/projectFile.test.ts` follows `CURRENT_SCHEMA_VERSION` and should pass unchanged. |
 | M13 | The flat Footprint list becomes the category picker; the default designator prefix comes from the part type. | `src/ui/componentPanels.test.tsx` "chooses a family, resets its parameters and prefix, and refuses out-of-range values". `src/tools/newTools.test.ts` "places the chosen footprint with the next designator, pads with fresh ids" (`settings.component` gains a part type). E2E `components.spec.ts` helper `chooseFootprint` selects from the old list. |
 | M14 | `Exporter` gains a group; the Nets panel shows only netlist exporters; the side panel gets a third tab. | `src/core/export/exporters.test.ts`. `src/ui/netsPanel.test.tsx` "lists nets with members, filters them and exports" and "shows the nets tab and exports through the app". |
+| M15 | `Ctrl+F` opens Find instead of the browser's find in page while the app has focus. | None: no test binds `Ctrl+F`; `src/ui/netsPanel.test.tsx` "opens the shortcuts help with ? or the button, and closes it with Esc" checks with `toContain`, so a new row does not break it. |
+| M16 | `Shift+M` gets its own binding (Ruler) instead of falling back to `M` (Continuity, M11). | Any M11 test that presses `Shift+M` expecting Continuity. `src/ui/shortcuts.test.tsx` "runs the plain key for a Shift combination without a binding of its own" uses `Shift+t` and should pass unchanged. |
 
 ### Planned milestones
 Same rules as above: one milestone per PR (reviewable in under an hour), passing CI, updated docs and a
 short demo note. Ordered by dependency, then value: M7–M9 build on the via tool, M10 comes before M11
-because probes respect visibility, and M12 → M13 → M14 go from fields to picker to BOM.
+because probes respect visibility, and M12 → M13 → M14 go from fields to picker to BOM. M15 (Find)
+needs M12's pin names and part fields and M10's object rows; M16 (Ruler) needs M11's Measure group. Both
+are ready after M14, and Find comes first because it helps more on a large board.
 
 #### M7 — Tool groups, Shift shortcuts, via sizing
 - **Status:** done ([ADR 0009](adr/0009-tool-groups-shift-shortcuts-via-sizing.md)).
@@ -325,9 +376,9 @@ because probes respect visibility, and M12 → M13 → M14 go from fields to pic
 #### M8 — Resize handles
 - **Scope:** F7 resize handles for vias, holes and connection points.
 - **Done when:** dragging the handle of a selected via, hole or point resizes it as one undo step and
-  updates the tool default.
-- **Tests:** unit: select tool handle states, handle priority over features, clamps. Property: "undo after
-  a resize restores the exact previous project". E2E: resize a via and undo.
+  updates the tool default; below 8 px on-screen radius no handle is shown and a press moves it.
+- **Tests:** unit: select tool handle states, handle priority over features, clamps, the 8 px rule.
+  Property: "undo after a resize restores the exact previous project". E2E: resize a via and undo.
 - **Schema:** no change.
 - **ADR:** amend 0009.
 
@@ -394,19 +445,46 @@ because probes respect visibility, and M12 → M13 → M14 go from fields to pic
 - **Schema:** no change (the BOM is derived).
 - **ADR:** 0014 (BOM grouping and exporter groups).
 
+#### M15 — Find
+- **Scope:** F14: find field, matching and ranking, result list with keyboard navigation, jump.
+- **Done when:** `Ctrl+F`, a query and `Enter` select and frame a component or pin, or highlight and frame
+  a net; `Esc` closes the field; a hidden result's row turns back on when jumped to.
+- **Tests:** unit (core): the matcher and ranking (exact, word start, substring, natural order, 20-per-group
+  limit, `U3.5` pin syntax), the fit-with-margin viewport and its 10 mm zoom cap. UI: typing in the field
+  triggers no shortcuts, `↑`/`↓`/`Enter`/`Esc`. Property: "the fitted viewport contains the result's
+  bounds", "every listed result contains the query, ignoring case". E2E: on the components board,
+  find `U1`, jump, and check it is selected and its side is active; find a net by name and see it
+  highlighted.
+- **Schema:** no change.
+- **ADR:** 0015 (find: what is searched, ranking, taking over `Ctrl+F`).
+
+#### M16 — Ruler
+- **Scope:** F15.
+- **Done when:** two clicks show a length that matches the board (two pins of a 2.54 mm header read
+  2.54 mm), `Shift` constrains to 45°, `Esc` clears, and the readout follows the display unit.
+- **Tests:** unit: the ruler tool state machine (start, live, finished, restart on the next click, `Esc`),
+  anchor and grid snapping, readout text in mm and mil. Property: "the length equals the distance
+  between the ends", "with Shift the angle is a multiple of 45° and the length is the projection of the
+  cursor onto that direction". E2E: measure between two header pads and check the status bar.
+- **Schema:** no change.
+- **ADR:** none (reuses trace snapping and `formatLength`); note the `Shift+M` binding in ADR 0009's
+  list of Shift combinations.
+
 ## Backlog
 Ideas that do not fit yet. Each needs a SPEC section and a milestone before work starts.
 
-- Ruler / distance measurement in the Measure group.
 - Expected multimeter readings between two probes, computed from component values.
+- Power and ground net roles: mark a net as Power or Ground for a fixed style, list it first, and carry
+  the role into netlist exports (needs a file format change).
+- A printable BOM (print stylesheet or PDF) next to the CSV and JSON exports.
 - Scan the whole board for overlapping vias and suggest all landmarks at once.
 - Pin names in netlist exports (changes the export format).
 - Footprints for the new part types: SOD-123/323, SMA/SMB, SOT-223, SOT-89, DPAK, axial and radial
   through-hole, 3/5 mm LEDs, tactile switches, USB and JST connectors, HC-49 crystals. Best done right
   after M13.
-- Find a component or net by name and zoom to it.
 - Resize handles for rectangular pads and for trace width.
 - Automatic plane containment (already noted as a later enhancement).
 - KiCad schematic / PCB export (a v1 non-goal).
 - Datasheet import and automatic part identification: out of scope while the app must work without
-  network access and send no data anywhere.
+  network access and send no data anywhere. The same applies to generated net names, circuit
+  explanations and troubleshooting by a remote AI service.
