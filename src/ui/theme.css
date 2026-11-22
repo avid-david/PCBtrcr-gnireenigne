@@ -144,6 +144,20 @@ body {
   margin-left: auto;
 }
 
+/* The landmark offer (SPEC F9) sits in the status bar without making it taller. */
+.shell__offer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
+.shell__offer > .button {
+  padding: 0 8px;
+  font-size: 12px;
+}
+
 .button,
 .segmented > button {
   padding: 4px 10px;

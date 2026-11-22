@@ -11,6 +11,7 @@ import { createImageRegistry } from './imageRegistry';
 import { syncImagesWithProject } from './imageSync';
 import { createPhotoImporter } from './importPhoto';
 import { createPersistence } from './persistence';
+import { syncLandmarkPreference } from './landmarkPreference';
 import { syncUnitPreference } from './unitPreference';
 import { browserPreferences } from '../platform/preferences';
 
@@ -52,6 +53,7 @@ const mountBoard = createBoardMounter({
 
 syncImagesWithProject(store, images);
 syncUnitPreference(store, browserPreferences);
+syncLandmarkPreference(store, browserPreferences);
 void persistence.start().then((autosave) => {
   // Write a pending change before the tab is closed or hidden.
   window.addEventListener('pagehide', () => void autosave.flush());

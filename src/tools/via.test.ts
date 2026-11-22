@@ -146,3 +146,46 @@ describe('via tool: overlay and hint', () => {
     expect(viaTool.preview(armed.state, armed.project)).toBe(armed.project);
   });
 });
+
+describe('via tool: landmark offer (SPEC F9)', () => {
+  const photo = { id: 'p', fileName: 'p.png', mimeType: 'image/png', widthPx: 100, heightPx: 100 };
+  const existing = {
+    kind: 'via',
+    id: 'old',
+    at: { x: 0, y: 0 },
+    drillMm: 0.3,
+    padMm: 0.6,
+  } as const;
+  const project = {
+    ...createProject(),
+    layers: createProject().layers.map((l) => ({ ...l, image: photo })),
+    features: [existing],
+  };
+  const place = (at: Vec2, settings: ToolSettings = KNOWN) => {
+    const ctx = {
+      ...contextOf(
+        { state: viaTool.initial, project, selection: [], activeLayerId: 'bottom' },
+        settings,
+      ),
+      newId: () => 'new',
+    };
+    const pressed = viaTool.step(viaTool.initial, down(at), ctx);
+    return viaTool.step(pressed.state, up(at), ctx);
+  };
+
+  it('offers the via it was placed over, remembering the active layer', () => {
+    expect(place({ x: 0.3, y: 0 }).landmark).toEqual({
+      newViaId: 'new',
+      existingViaId: 'old',
+      at: { x: 0, y: 0 },
+      activeLayerId: 'bottom',
+      otherLayerId: 'top',
+    });
+  });
+
+  it('offers nothing away from other vias, or with the preference off', () => {
+    expect(place({ x: 5, y: 0 }).landmark).toBeNull();
+    expect(place({ x: 0.3, y: 0 }, { ...KNOWN, offerLandmarks: false }).landmark).toBeNull();
+    expect(DEFAULT_SETTINGS.offerLandmarks).toBe(true);
+  });
+});

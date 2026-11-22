@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { Command } from '../core/commands/command';
+import { addLandmarkFromVias } from '../core/commands/landmarks';
 import { EMPTY_HISTORY } from '../core/commands/history';
 import type { FeatureId } from '../core/model/features';
 import { createProject, type Project } from '../core/model/project';
@@ -36,6 +37,10 @@ export interface EditorState extends EditorData {
   /** Switches align mode between placing corners and matching points. */
   setAlignMode(mode: AlignMode): void;
   setSelection(ids: readonly FeatureId[]): void;
+  /** Uses the offered via pair as a landmark (SPEC F9), as one undo step. */
+  acceptLandmark(): void;
+  /** Withdraws the landmark offer and keeps both vias. */
+  dismissLandmark(): void;
   updateSettings(update: (settings: ToolSettings) => ToolSettings): void;
   newProject(): void;
   setNotice(notice: string | null): void;
@@ -88,6 +93,7 @@ const replaceProject = (s: EditorState, project: Project): Partial<EditorState> 
   ),
   tool: activate('select'),
   selection: [],
+  landmarkOffer: null,
   notice: null,
   projectGeneration: s.projectGeneration + 1,
 });
@@ -153,6 +159,23 @@ const editingActions = (set: Set, newId: () => string) => ({
   },
 });
 
+/** Actions that answer the landmark offer of an overlapping via (SPEC F9). */
+const landmarkActions = (set: Set, newId: () => string) => ({
+  acceptLandmark: () => {
+    set((s) =>
+      s.landmarkOffer === null
+        ? {}
+        : {
+            ...applyCommands(s, [addLandmarkFromVias(s.landmarkOffer, newId())]),
+            landmarkOffer: null,
+          },
+    );
+  },
+  dismissLandmark: () => {
+    set({ landmarkOffer: null });
+  },
+});
+
 /** Actions that change how the project is shown or set up. */
 const viewActions = (set: Set) => ({
   updateView: (update: (view: ViewState, project: Project) => ViewState) => {
@@ -180,12 +203,14 @@ export function createEditorStore(options: EditorStoreOptions = {}): EditorStore
     tool: activate('select'),
     selection: [],
     settings: DEFAULT_SETTINGS,
+    landmarkOffer: null,
     notice: null,
     projectGeneration: 0,
     fileName: DEFAULT_FILE_NAME,
     savedProject: project,
     recovery: null,
     ...editingActions(set, newId),
+    ...landmarkActions(set, newId),
     ...viewActions(set),
     ...fileActions(set),
   }));

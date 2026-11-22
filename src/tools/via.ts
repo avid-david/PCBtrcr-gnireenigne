@@ -1,3 +1,4 @@
+import { findLandmark } from '../core/alignment/landmarks';
 import { distance } from '../core/geometry/distance';
 import type { Vec2 } from '../core/geometry/vec2';
 import type { Via } from '../core/model/features';
@@ -63,6 +64,12 @@ interface Placement {
   readonly drawn: ViaSize | null;
 }
 
+/** The landmark a placed via offers, unless the preference is off (SPEC F9). */
+const landmarkFor = (via: Via, ctx: ToolContext) =>
+  ctx.settings.offerLandmarks
+    ? findLandmark(ctx.project, { via, activeLayerId: ctx.activeLayerId })
+    : null;
+
 /** Places a via; a drawn one also becomes the via default. */
 function place({ state, at, drawn }: Placement, ctx: ToolContext): ToolResult<ViaState> {
   const via = viaAt(ctx.newId(), at, drawn ?? ctx.settings.via);
@@ -71,6 +78,7 @@ function place({ state, at, drawn }: Placement, ctx: ToolContext): ToolResult<Vi
     commands: [addFeature(via)],
     selection: [via.id],
     activateLayer: null,
+    landmark: landmarkFor(via, ctx),
   };
   return drawn === null ? result : { ...result, settings: rememberDefaults(ctx.settings, via) };
 }

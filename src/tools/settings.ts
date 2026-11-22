@@ -17,6 +17,11 @@ export interface ToolSettings {
    * vias to size. Set by a drawn via, an inspector edit of a via or its defaults, or a loaded via.
    */
   readonly viaSizeKnown: boolean;
+  /**
+   * Whether a via placed over an existing one offers a landmark (SPEC F9). A per-browser
+   * preference, remembered by the app, not a project setting.
+   */
+  readonly offerLandmarks: boolean;
   readonly pad: {
     readonly shape: PadShape;
     readonly widthMm: number;
@@ -89,6 +94,7 @@ export const DEFAULT_SETTINGS: ToolSettings = {
   trace: { widthMm: 0.25 },
   via: { drillMm: 0.3, padMm: 0.6 },
   viaSizeKnown: false,
+  offerLandmarks: true,
   pad: { shape: 'rect', widthMm: 1, heightMm: 0.6, throughHole: false, drillMm: 1 },
   point: { diameterMm: 0.8 },
   hole: { diameterMm: 1, plated: false },

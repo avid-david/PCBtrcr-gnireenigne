@@ -63,12 +63,16 @@ export const SHORTCUTS: ShortcutMap = {
   Home: always('Fit the board to the view', (store) => {
     store.getState().updateView(fitToView);
   }),
-  Escape: always('Cancel what the tool is doing; clear the net highlight', (store) => {
-    store.getState().sendTool({ type: 'cancel' });
-    store
-      .getState()
-      .updateView((view) => (view.highlight === null ? view : { ...view, highlight: null }));
-  }),
+  Escape: always(
+    'Cancel what the tool is doing; clear the net highlight and landmark offer',
+    (store) => {
+      store.getState().sendTool({ type: 'cancel' });
+      store.getState().dismissLandmark();
+      store
+        .getState()
+        .updateView((view) => (view.highlight === null ? view : { ...view, highlight: null }));
+    },
+  ),
   Enter: toolKey('Enter', 'Finish a trace, plane or silkscreen line'),
   Backspace: toolKey('Backspace', 'Remove the last point; delete the selection'),
   Delete: toolKey('Delete', 'Delete the selection'),
