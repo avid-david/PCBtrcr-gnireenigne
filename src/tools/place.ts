@@ -4,7 +4,14 @@ import type { Feature } from '../core/model/features';
 import type { LayerId } from '../core/model/project';
 import { snapToGrid } from './snap';
 import type { ToolSettings } from './settings';
-import { NO_OVERLAY, handle, stateOnly, type Tool, type ToolHandlers } from './tool';
+import {
+  NO_OVERLAY,
+  handle,
+  stateOnly,
+  type Tool,
+  type ToolGroup,
+  type ToolHandlers,
+} from './tool';
 
 /** Where the next feature would be placed (follows the cursor). */
 export interface PlaceState {
@@ -54,6 +61,7 @@ export interface PlaceToolInfo {
   readonly kind: PlacedKind;
   readonly label: string;
   readonly shortcut: string;
+  readonly group: ToolGroup;
   readonly hint: string;
 }
 
@@ -84,6 +92,7 @@ function placeTool(info: PlaceToolInfo): Tool<PlaceState> {
   return {
     label: info.label,
     shortcut: info.shortcut,
+    group: info.group,
     cursor: 'crosshair',
     initial: { cursor: null },
     step: handle(placeHandlers(info)),
@@ -108,6 +117,7 @@ export const viaTool = placeTool({
   kind: 'via',
   label: 'Via',
   shortcut: 'v',
+  group: 'connections',
   hint: 'Click to place a via (on both layers).',
 });
 
@@ -115,6 +125,7 @@ export const padTool = placeTool({
   kind: 'pad',
   label: 'Pad',
   shortcut: 'p',
+  group: 'connections',
   hint: 'Click to place a pad: SMD on the active layer, or through-hole on both.',
 });
 
@@ -122,6 +133,7 @@ export const pointTool = placeTool({
   kind: 'point',
   label: 'Connection point',
   shortcut: 'c',
+  group: 'connections',
   hint: 'Click to place a test point or wire attachment on the active layer.',
 });
 
@@ -129,6 +141,7 @@ export const holeTool = placeTool({
   kind: 'hole',
   label: 'Hole',
   shortcut: 'h',
+  group: 'connections',
   hint: 'Click to place a hole: plated holes connect both layers, mechanical ones do not.',
 });
 
@@ -136,6 +149,7 @@ export const textTool = placeTool({
   kind: 'text',
   label: 'Text',
   shortcut: 'x',
+  group: 'annotations',
   hint: 'Click to place a note (not part of the board). Edit its text in the side panel.',
 });
 

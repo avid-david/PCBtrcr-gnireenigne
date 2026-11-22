@@ -14,7 +14,15 @@ import {
 import { planeTool, silkTool, type PolylineState } from './polyline';
 import type { ToolSettings } from './settings';
 import { selectTool, type SelectState } from './select';
-import type { Tool, ToolContext, ToolEvent, ToolOverlay, ToolResult } from './tool';
+import {
+  TOOL_GROUPS,
+  type Tool,
+  type ToolContext,
+  type ToolEvent,
+  type ToolGroup,
+  type ToolOverlay,
+  type ToolResult,
+} from './tool';
 import { traceTool, type TraceState } from './trace';
 
 /** The state type of every registered tool. Add a tool here and in `TOOLS`. */
@@ -25,8 +33,8 @@ export interface ToolStates {
   readonly pad: PlaceState;
   readonly point: PlaceState;
   readonly hole: PlaceState;
-  readonly component: ComponentState;
   readonly plane: PolylineState;
+  readonly component: ComponentState;
   readonly silk: PolylineState;
   readonly text: PlaceState;
   readonly align: AlignState;
@@ -41,14 +49,14 @@ export const TOOLS: { readonly [K in ToolId]: Tool<ToolStates[K]> } = {
   pad: padTool,
   point: pointTool,
   hole: holeTool,
-  component: componentTool,
   plane: planeTool,
+  component: componentTool,
   silk: silkTool,
   text: textTool,
   align: alignTool,
 };
 
-/** Toolbar order. */
+/** Toolbar order: grouped as in `TOOL_GROUPS`, in registration order within a group. */
 export const TOOL_ORDER: readonly ToolId[] = [
   'select',
   'trace',
@@ -56,12 +64,27 @@ export const TOOL_ORDER: readonly ToolId[] = [
   'pad',
   'point',
   'hole',
-  'component',
   'plane',
+  'component',
   'silk',
   'text',
   'align',
 ];
+
+export interface ToolbarGroup {
+  readonly id: ToolGroup;
+  /** Caption above the group, or `null` for none (Select). */
+  readonly label: string | null;
+  readonly tools: readonly ToolId[];
+}
+
+/** The toolbar's groups with their tools; groups without a registered tool are left out. */
+export const toolbarGroups = (): readonly ToolbarGroup[] =>
+  TOOL_GROUPS.map((g) => ({
+    id: g.id,
+    label: g.label,
+    tools: TOOL_ORDER.filter((id) => TOOLS[id].group === g.id),
+  })).filter((g) => g.tools.length > 0);
 
 /** The active tool together with its state (the pair keeps their types in step). */
 export type ActiveTool = {

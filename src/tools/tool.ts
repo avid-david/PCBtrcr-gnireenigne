@@ -67,6 +67,18 @@ export const NO_OVERLAY: ToolOverlay = {
   box: null,
 };
 
+/** Toolbar groups (SPEC F7), in toolbar order. */
+export const TOOL_GROUPS = [
+  { id: 'select', label: null },
+  { id: 'connections', label: 'Connections' },
+  { id: 'components', label: 'Components' },
+  { id: 'annotations', label: 'Annotations' },
+  { id: 'measure', label: 'Measure' },
+  { id: 'align', label: 'Align' },
+] as const;
+
+export type ToolGroup = (typeof TOOL_GROUPS)[number]['id'];
+
 /**
  * An editing tool (SPEC F3): a small state machine with its own cursor, hint and Esc to cancel.
  * Tools are pure: they return commands and never touch the project themselves.
@@ -75,6 +87,8 @@ export interface Tool<S> {
   readonly label: string;
   /** Single key that selects the tool (shown in tooltips). */
   readonly shortcut: string;
+  /** Toolbar group the tool is shown in (SPEC F7). */
+  readonly group: ToolGroup;
   readonly cursor: 'default' | 'crosshair';
   readonly initial: S;
   step(state: S, event: ToolEvent, ctx: ToolContext): ToolResult<S>;

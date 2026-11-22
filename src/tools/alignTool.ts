@@ -42,6 +42,7 @@ function step(state: AlignState, event: ToolEvent, ctx: ToolContext): ToolResult
 export const alignTool: Tool<AlignState> = {
   label: 'Align photos',
   shortcut: 'a',
+  group: 'align',
   cursor: 'crosshair',
   initial: INITIAL_ALIGN,
   step,
