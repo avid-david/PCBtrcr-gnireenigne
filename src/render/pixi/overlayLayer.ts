@@ -1,6 +1,7 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import type { Vec2 } from '../../core/geometry/vec2';
 import { boardToScreen, type Viewport } from '../../core/geometry/viewport';
+import { HANDLE_DRAW_PX } from '../../tools/resizeHandle';
 import type { MarkerStatus, SceneMarker } from '../alignOverlay';
 import type { Scene } from '../scene';
 
@@ -33,6 +34,7 @@ export class OverlayLayer {
     this.graphics.clear();
     this.drawOutline(scene.outline, scene.viewport);
     this.drawSelection(scene.selection, scene.viewport);
+    this.drawHandle(scene.handle, scene.viewport);
     scene.markers.forEach((marker) => {
       this.drawMarker(marker, scene.viewport);
     });
@@ -50,6 +52,18 @@ export class OverlayLayer {
         .rect(a.x - 3, a.y - 3, b.x - a.x + 6, b.y - a.y + 6)
         .stroke({ width: 1.5, color: SELECTION_COLOR });
     }
+  }
+
+  /** The resize handle: a white dot with a dark ring, so it shows on any photo. */
+  private drawHandle(handle: Scene['handle'], viewport: Viewport): void {
+    if (handle === null) {
+      return;
+    }
+    const { x, y } = boardToScreen(viewport, handle);
+    this.graphics
+      .circle(x, y, HANDLE_DRAW_PX)
+      .fill({ color: SELECTION_COLOR })
+      .stroke({ width: 1.5, color: 0x000000, alpha: 0.8 });
   }
 
   private drawOutline(outline: Scene['outline'], viewport: Viewport): void {

@@ -194,4 +194,35 @@ describe('buildScene features', () => {
     const preview = buildScene(input({ tool: moving })).features.find((d) => d.feature.id === 'v1');
     expect(preview?.feature).toMatchObject({ at: { x: 11, y: 0 } });
   });
+
+  it('shows the resize handle of one selected via once it is 8 px on screen (SPEC F7)', () => {
+    const at = (zoom: number) => ({
+      ...createViewState(board),
+      viewport: { zoom, offset: { x: 0, y: 0 } },
+    });
+    // The via's pad radius is 0.3 mm: 1.2 px at the default 4 px/mm, 12 px at 40 px/mm.
+    expect(buildScene(input({ selection: ['v1'] })).handle).toBeNull();
+    expect(buildScene(input({ selection: ['v1'], view: at(40) })).handle).toEqual({
+      x: 10.3,
+      y: 0,
+    });
+    expect(buildScene(input({ selection: [], view: at(40) })).handle).toBeNull();
+    const via = { id: 'via', state: { cursor: null, drag: null, armed: false } } as const;
+    expect(buildScene(input({ selection: ['v1'], view: at(40), tool: via })).handle).toBeNull();
+    const resizing = {
+      id: 'select',
+      state: {
+        mode: 'resizing',
+        id: 'v1',
+        centre: { x: 10, y: 0 },
+        press: { x: 10.3, y: 0 },
+        clickMm: 0.01,
+        layerId: 'top',
+        radiusMm: 0.05,
+      },
+    } as const;
+    // While dragging, the handle follows the live size and stays visible below 8 px.
+    const live = buildScene(input({ selection: ['v1'], view: at(40), tool: resizing }));
+    expect(live.handle).toEqual({ x: 10.05, y: 0 });
+  });
 });
