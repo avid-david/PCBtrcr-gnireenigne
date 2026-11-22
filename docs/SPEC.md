@@ -465,6 +465,7 @@ checked in every orientation at once.
 - **ADR:** amend 0009.
 
 #### M9 — Landmarks from overlapping vias
+- **Status:** done ([ADR 0010](adr/0010-landmarks-from-vias.md)).
 - **Scope:** F9.
 - **Done when:** placing a via over an existing one on the other photo offers a landmark; accepting adds
   one match, removes the new via and re-solves the alignment; undo brings back the previous state.

@@ -8,8 +8,9 @@ features, connectivity, undo and tools in [ADR 0005](adr/0005-features-connectiv
 the project file and autosave in [ADR 0006](adr/0006-project-file-and-autosave.md), 
 footprints, components, planes, text and silkscreen in [ADR 0007](adr/0007-footprints-components-planes.md),
 net names, colours, locks and exporters in [ADR 0008](adr/0008-net-styles-and-exporters.md),
-and tool groups, Shift shortcuts, drawing vias to size and resize handles in
-[ADR 0009](adr/0009-tool-groups-shift-shortcuts-via-sizing.md).
+tool groups, Shift shortcuts, drawing vias to size and resize handles in
+[ADR 0009](adr/0009-tool-groups-shift-shortcuts-via-sizing.md), and landmarks from overlapping
+vias in [ADR 0010](adr/0010-landmarks-from-vias.md).
 
 ## Layers
 
@@ -27,8 +28,8 @@ Dependencies point inward. Arrows mean "may import".
 
 | Folder | Contents | May import | Exists since |
 | --- | --- | --- | --- |
-| `src/core/` | Pure domain logic: geometry, model (incl. copper features), alignment, connectivity, view, commands and undo history, io (project file format, versions, migrations, zip archive), footprints (JSON parts and parametric families), export (netlist exporters). No DOM, React, PixiJS or browser APIs. | nothing outside `core` | M0 |
-| `src/tools/` | Interaction state machines: pan/zoom navigation, and the registered editing tools (select, trace, via, pad, point, hole, plane, component, silkscreen, text, align), each declaring its toolbar group, with snapping, and the Select tool's resize handles (`resizeHandle.ts`). They return commands (and, like a via drawn to size or resized, new tool defaults), never mutate. | `core` | M1 |
+| `src/core/` | Pure domain logic: geometry, model (incl. copper features), alignment (incl. the overlapping-via landmark rule and its pixel mapping), connectivity, view, commands and undo history, io (project file format, versions, migrations, zip archive), footprints (JSON parts and parametric families), export (netlist exporters). No DOM, React, PixiJS or browser APIs. | nothing outside `core` | M0 |
+| `src/tools/` | Interaction state machines: pan/zoom navigation, and the registered editing tools (select, trace, via, pad, point, hole, plane, component, silkscreen, text, align), each declaring its toolbar group, with snapping, and the Select tool's resize handles (`resizeHandle.ts`). They return commands (and, like a via drawn to size or resized, new tool defaults; the Via tool also a landmark offer), never mutate. | `core` | M1 |
 | `src/render/` | `buildScene` (state → what to draw, incl. outline, alignment markers and the resize handle), the `Renderer` interface and its PixiJS implementation. Reads state, never mutates it. | `core`, `tools` (not `ui`) | M1 |
 | `src/ui/` | React components and the Zustand editor store. Thin: dispatch commands, show state, turn DOM events into tool inputs. | `core`, `tools` (not `render`) | M0 |
 | `src/platform/` | Image decoding, file download, key-value storage (IndexedDB) for autosave, per-browser preferences (later clipboard); browser vs desktop adapters. | `core` | M1 |
@@ -68,7 +69,11 @@ store change ─► app/boardController (at most once per frame) ─► render/b
 - **Tool state, selection and tool settings** (store): transient editor state, not saved. While a
   tool drags something (features, an alignment point), canvas and panel show the tool's `preview`.
   Tool settings include whether a via size is known in this session (ADR 0009); loading a project
-  with vias makes its newest via the default.
+  with vias makes its newest via the default. They also hold the per-browser preference for
+  landmark offers, which `app/landmarkPreference` remembers like the display unit.
+- **Landmark offer** (store, ADR 0010): the overlapping via pair the status bar offers as a
+  landmark. Transient: any edit, undo/redo, `Esc`, **Keep both** or the next via withdraws it;
+  accepting is one command that removes the new via and adds a matched point.
 - **View state** (`core/view`): active layer, viewport, overlay opacity, hidden photos, display unit
   (with `formatLength`, so tool hints can show lengths in it). Looking at the
   board is not an edit, so view changes are not commands and are not saved with the project.

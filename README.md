@@ -37,6 +37,12 @@ and bottom photos, align them, trace copper features, and let the tool derive an
    features (6+ lets the tool measure accuracy and spot mis-clicks).
 4. The panel shows each point's error in mm, the RMS per layer, and marks outliers in red. Drag a
    point to adjust it (live preview) or delete it with ×.
+5. While tracing, vias can align the photos too. Place a via on a hole in one photo, switch layers
+   and place one on the same hole in the other photo. If the two overlap (but do not coincide), the
+   status bar asks "same via?". **Use as landmark** removes the second via and adds the pair as a
+   matched point (one undo step); **Keep both**, `Esc` or any other edit keeps both vias. Turn the
+   offer off with **Offer landmarks from overlapping vias** in the Align panel (remembered per
+   browser).
 
 Tip: set **Overlay opacity** to 0 % while clicking, so only the active photo is visible.
 
