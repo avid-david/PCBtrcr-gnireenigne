@@ -79,6 +79,7 @@ export function buildScene(input: SceneInput): Scene {
     activeLayerId: view.activeLayerId,
     selection: input.selection,
     settings: input.settings,
+    units: view.units,
     newId: () => '',
   };
   const features = featureScene(project, view);

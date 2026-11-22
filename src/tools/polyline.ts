@@ -107,6 +107,7 @@ const planeInfo: PolylineInfo = {
 export const planeTool: Tool<PolylineState> = {
   label: 'Plane',
   shortcut: 'l',
+  group: 'connections',
   cursor: 'crosshair',
   initial: IDLE,
   step: handle(polylineHandlers(planeInfo)),
@@ -157,6 +158,7 @@ const silkTextGhost = (s: PolylineState, ctx: ToolContext): ToolOverlay => ({
 export const silkTool: Tool<PolylineState> = {
   label: 'Silkscreen',
   shortcut: 'k',
+  group: 'annotations',
   cursor: 'crosshair',
   initial: IDLE,
   step: (s, e, ctx) =>

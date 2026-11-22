@@ -92,6 +92,7 @@ const handlers: ToolHandlers<TraceState> = {
 export const traceTool: Tool<TraceState> = {
   label: 'Trace',
   shortcut: 't',
+  group: 'connections',
   cursor: 'crosshair',
   initial: IDLE,
   step: handle(handlers),

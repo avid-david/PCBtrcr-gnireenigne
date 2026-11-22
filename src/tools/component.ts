@@ -85,6 +85,7 @@ const handlers: ToolHandlers<ComponentState> = {
 export const componentTool: Tool<ComponentState> = {
   label: 'Component',
   shortcut: 'u',
+  group: 'components',
   cursor: 'crosshair',
   initial: IDLE,
   step: handle(handlers),

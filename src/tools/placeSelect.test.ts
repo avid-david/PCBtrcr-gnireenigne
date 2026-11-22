@@ -3,7 +3,7 @@ import { bound, free, smdPad, trace, via, withFeatures } from '../core/model/fea
 import { createProject } from '../core/model/project';
 import { alignTool } from './alignTool';
 import { click, contextOf, down, drive, key, move, up } from './harness.test-support';
-import { holeTool, padTool, pointTool, templateFeature, viaTool } from './place';
+import { holeTool, padTool, pointTool, templateFeature } from './place';
 import {
   TOOLS,
   TOOL_ORDER,
@@ -16,10 +16,14 @@ import {
 } from './registry';
 import { selectTool } from './select';
 import { DEFAULT_SETTINGS, rememberDefaults } from './settings';
+import { viaTool } from './via';
+
+/** Settings once a via size is known; a fresh session is armed (SPEC F7). */
+const KNOWN = { ...DEFAULT_SETTINGS, viaSizeKnown: true };
 
 describe('place tools', () => {
   it('place one feature per click with the current defaults and select it', () => {
-    const r = drive(viaTool, createProject(), click({ x: 2, y: 3 }));
+    const r = drive(viaTool, { project: createProject(), settings: KNOWN }, click({ x: 2, y: 3 }));
     expect(r.project.features).toEqual([
       { kind: 'via', id: 'id1', at: { x: 2, y: 3 }, drillMm: 0.3, padMm: 0.6 },
     ]);
@@ -55,15 +59,20 @@ describe('place tools', () => {
   });
 
   it('show a ghost under the cursor, snapped to the grid', () => {
-    const settings = { ...DEFAULT_SETTINGS, grid: { enabled: true, stepMm: 0.5 } };
+    const settings = { ...KNOWN, grid: { enabled: true, stepMm: 0.5 } };
     const hovered = drive(viaTool, { project: createProject(), ...{ settings } }, [
       move({ x: 1.3, y: 1.1 }),
     ]);
     expect(viaTool.overlay(hovered.state, contextOf(hovered, settings)).ghost).toMatchObject({
       at: { x: 1.5, y: 1 },
     });
-    const cancelled = drive(viaTool, createProject(), [move({ x: 1, y: 1 }), { type: 'cancel' }]);
-    expect(viaTool.overlay(cancelled.state, contextOf(cancelled)).ghost).toBeNull();
+    const armed = { ...settings, viaSizeKnown: false };
+    expect(viaTool.overlay(hovered.state, contextOf(hovered, armed)).ghost).toBeNull();
+    const cancelled = drive(viaTool, { project: createProject(), settings: KNOWN }, [
+      move({ x: 1, y: 1 }),
+      { type: 'cancel' },
+    ]);
+    expect(viaTool.overlay(cancelled.state, contextOf(cancelled, KNOWN)).ghost).toBeNull();
     expect(viaTool.hint(viaTool.initial, contextOf(cancelled))).toContain('via');
   });
 });
@@ -156,16 +165,18 @@ describe('tool registry', () => {
   });
 
   it('runs the active tool generically', () => {
-    const ctx = contextOf({
-      state: null,
-      project: createProject(),
-      selection: [],
-      activeLayerId: 'top',
-    });
-    const active = activate('via');
-    const { active: next, result } = stepTool(
-      active,
+    const ctx = contextOf(
+      { state: null, project: createProject(), selection: [], activeLayerId: 'top' },
+      KNOWN,
+    );
+    const { active: pressed } = stepTool(
+      activate('via'),
       { type: 'pointerdown', board: { x: 1, y: 1 }, hitRadiusMm: 1, shift: false },
+      ctx,
+    );
+    const { active: next, result } = stepTool(
+      pressed,
+      { type: 'pointerup', board: { x: 1, y: 1 } },
       ctx,
     );
     expect(next.id).toBe('via');

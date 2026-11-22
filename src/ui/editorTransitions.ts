@@ -31,6 +31,7 @@ export const toolContext = (s: EditorData, newId: () => string): ToolContext => 
   activeLayerId: s.view.activeLayerId,
   selection: s.selection,
   settings: s.settings,
+  units: s.view.units,
   newId,
 });
 
@@ -100,5 +101,6 @@ export function sendToTool(
     ...edited,
     selection: pruneSelection(result.selection ?? edited.selection ?? s.selection, project),
     view: layer === null ? s.view : setActiveLayer(s.view, project, layer),
+    ...(result.settings === undefined ? {} : { settings: result.settings }),
   };
 }

@@ -4,6 +4,21 @@ All notable changes to PCB Reverse Tracer. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Tool groups, Shift shortcuts, via sizing (M7):** the toolbar shows tools in labelled groups;
+  `Shift` + key shortcuts (falling back to the plain key); draw a via to size by dragging from its
+  centre to its edge, after which clicks place vias of that size; `Shift+V` draws the next via to
+  size.
+
+### Changed
+
+- Vias are placed when the mouse button is released, and the first via of a session is drawn to
+  size (a click places nothing until a via size is known).
+- Plane moved into the Connections group, before Component, in the toolbar.
+
 ## [0.1.0] - 2026-11-22
 
 The first release: every feature in the SPEC's v1 scope.

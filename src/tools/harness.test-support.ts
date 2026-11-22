@@ -11,6 +11,8 @@ export interface Driven<S> {
   readonly project: Project;
   readonly selection: readonly FeatureId[];
   readonly activeLayerId: string;
+  /** Tool defaults, as changed by the tool (e.g. a via drawn to size). */
+  readonly settings: ToolSettings;
 }
 
 /** Where a drive starts: a project, optionally with layer, selection and settings. */
@@ -33,21 +35,23 @@ export function drive<S>(
     project: options.project,
     selection: options.selection ?? [],
     activeLayerId: options.activeLayerId ?? 'top',
+    settings: options.settings ?? DEFAULT_SETTINGS,
   };
   return events.reduce((acc, event) => {
-    const ctx = contextOf(acc, options.settings ?? DEFAULT_SETTINGS, () => `id${String(++ids)}`);
+    const ctx = contextOf(acc, acc.settings, () => `id${String(++ids)}`);
     const r = tool.step(acc.state, event, ctx);
     return {
       state: r.state,
       project: r.commands.reduce((p, c) => c.execute(p), acc.project),
       selection: r.selection ?? acc.selection,
       activeLayerId: r.activateLayer ?? acc.activeLayerId,
+      settings: r.settings ?? acc.settings,
     };
   }, start);
 }
 
 export const contextOf = <S>(
-  d: Driven<S>,
+  d: Omit<Driven<S>, 'settings'>,
   settings: ToolSettings = DEFAULT_SETTINGS,
   newId = () => 'x',
 ): ToolContext => ({
@@ -55,6 +59,7 @@ export const contextOf = <S>(
   activeLayerId: d.activeLayerId,
   selection: d.selection,
   settings,
+  units: 'mm',
   newId,
 });
 

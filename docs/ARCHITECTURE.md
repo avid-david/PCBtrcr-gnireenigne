@@ -7,7 +7,9 @@ photo display in [ADR 0003](adr/0003-image-display.md), alignment in [ADR 0004](
 features, connectivity, undo and tools in [ADR 0005](adr/0005-features-connectivity-undo.md), and
 the project file and autosave in [ADR 0006](adr/0006-project-file-and-autosave.md), 
 footprints, components, planes, text and silkscreen in [ADR 0007](adr/0007-footprints-components-planes.md),
-and net names, colours, locks and exporters in [ADR 0008](adr/0008-net-styles-and-exporters.md).
+net names, colours, locks and exporters in [ADR 0008](adr/0008-net-styles-and-exporters.md),
+and tool groups, Shift shortcuts and drawing vias to size in
+[ADR 0009](adr/0009-tool-groups-shift-shortcuts-via-sizing.md).
 
 ## Layers
 
@@ -26,7 +28,7 @@ Dependencies point inward. Arrows mean "may import".
 | Folder | Contents | May import | Exists since |
 | --- | --- | --- | --- |
 | `src/core/` | Pure domain logic: geometry, model (incl. copper features), alignment, connectivity, view, commands and undo history, io (project file format, versions, migrations, zip archive), footprints (JSON parts and parametric families), export (netlist exporters). No DOM, React, PixiJS or browser APIs. | nothing outside `core` | M0 |
-| `src/tools/` | Interaction state machines: pan/zoom navigation, and the registered editing tools (select, trace, via, pad, point, hole, component, plane, silkscreen, text, align) with snapping. They return commands, never mutate. | `core` | M1 |
+| `src/tools/` | Interaction state machines: pan/zoom navigation, and the registered editing tools (select, trace, via, pad, point, hole, plane, component, silkscreen, text, align), each declaring its toolbar group, with snapping. They return commands (and, like a via drawn to size, new tool defaults), never mutate. | `core` | M1 |
 | `src/render/` | `buildScene` (state → what to draw, incl. outline and alignment markers), the `Renderer` interface and its PixiJS implementation. Reads state, never mutates it. | `core`, `tools` (not `ui`) | M1 |
 | `src/ui/` | React components and the Zustand editor store. Thin: dispatch commands, show state, turn DOM events into tool inputs. | `core`, `tools` (not `render`) | M0 |
 | `src/platform/` | Image decoding, file download, key-value storage (IndexedDB) for autosave, per-browser preferences (later clipboard); browser vs desktop adapters. | `core` | M1 |
@@ -65,7 +67,10 @@ store change ─► app/boardController (at most once per frame) ─► render/b
 - **History** (`core/commands/history`): the project before each step; undo restores it exactly.
 - **Tool state, selection and tool settings** (store): transient editor state, not saved. While a
   tool drags something (features, an alignment point), canvas and panel show the tool's `preview`.
-- **View state** (`core/view`): active layer, viewport, overlay opacity, hidden photos. Looking at the
+  Tool settings include whether a via size is known in this session (ADR 0009); loading a project
+  with vias makes its newest via the default.
+- **View state** (`core/view`): active layer, viewport, overlay opacity, hidden photos, display unit
+  (with `formatLength`, so tool hints can show lengths in it). Looking at the
   board is not an edit, so view changes are not commands and are not saved with the project.
 - **Pixels**: decoded photo tiles and the original file bytes live in the app's image registry, keyed
   by image id, outside the model, for as long as the project or its undo history refers to them.

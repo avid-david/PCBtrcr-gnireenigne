@@ -37,8 +37,15 @@ const toolShortcuts = Object.fromEntries(
   TOOL_ORDER.map((id) => [TOOLS[id].shortcut, chooseTool(id)]),
 );
 
+/** Picks the Via tool armed, also when it is already active (SPEC F7). */
+const armVia = notTyping('Via tool, armed: draw the next via to size', (store) => {
+  store.getState().setTool('via');
+  store.getState().sendTool({ type: 'key', key: 'Shift+v' });
+});
+
 /**
- * Global shortcuts by key combination ("Ctrl+Shift+z" style; single characters lower-case).
+ * Global shortcuts by key combination ("Ctrl+Shift+z", "Shift+v" style; single characters
+ * lower-case). A Shift combination without a binding runs the plain key's shortcut (SPEC F7).
  * Tab always switches layers (decided for M1), so the browser's focus movement is suppressed.
  */
 export type ShortcutMap = Readonly<Record<string, Shortcut>>;
@@ -49,6 +56,7 @@ const redo = notTyping('Redo', (store) => {
 
 export const SHORTCUTS: ShortcutMap = {
   ...toolShortcuts,
+  'Shift+v': armVia,
   Tab: always('Switch the active layer', (store) => {
     store.getState().updateView(cycleActiveLayer);
   }),
@@ -78,7 +86,7 @@ export const SHORTCUTS: ShortcutMap = {
   'Ctrl+Shift+z': redo,
 };
 
-/** The shortcut name of a key event, e.g. "Ctrl+Shift+z", "Tab" or "t". */
+/** The shortcut name of a key event, e.g. "Ctrl+Shift+z", "Shift+v", "Tab" or "t". */
 export function comboOf(
   e: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'>,
 ): string | null {
@@ -86,8 +94,18 @@ export function comboOf(
     return null;
   }
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-  const ctrl = e.ctrlKey || e.metaKey;
-  return ctrl ? `Ctrl+${e.shiftKey ? 'Shift+' : ''}${key}` : key;
+  const ctrl = e.ctrlKey || e.metaKey ? 'Ctrl+' : '';
+  return `${ctrl}${e.shiftKey ? 'Shift+' : ''}${key}`;
+}
+
+const SHIFT = 'Shift+';
+
+/** The shortcut for a combination; an unbound Shift combination falls back to the plain key. */
+function findShortcut(combo: string, extra: ShortcutMap): Shortcut | undefined {
+  const bound = extra[combo] ?? SHORTCUTS[combo];
+  return bound === undefined && combo.startsWith(SHIFT)
+    ? findShortcut(combo.slice(SHIFT.length), extra)
+    : bound;
 }
 
 export interface RunOptions {
@@ -103,7 +121,7 @@ export function runShortcut(
   combo: string,
   { typing = false, extra = {} }: RunOptions = {},
 ): boolean {
-  const shortcut = extra[combo] ?? SHORTCUTS[combo];
+  const shortcut = findShortcut(combo, extra);
   if (shortcut === undefined || (typing && !shortcut.whileTyping)) {
     return false;
   }

@@ -1,11 +1,9 @@
 import type { Vec2 } from '../core/geometry/vec2';
 import { screenToBoard } from '../core/geometry/viewport';
 import type { NavigationEvent } from '../tools/navigation';
-import type { ToolEvent } from '../tools/tool';
+import { HIT_RADIUS_PX, type ToolEvent } from '../tools/tool';
 import type { EditorStore } from './store';
 
-/** How close (screen pixels) a click must be to hit or snap to something. */
-export const HIT_RADIUS_PX = 10;
 const LEFT_BUTTON = 0;
 
 interface Conversion {

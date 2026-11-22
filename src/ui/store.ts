@@ -8,7 +8,7 @@ import { createProject, type Project } from '../core/model/project';
 import { createViewState, fitToView, type ViewState } from '../core/view/viewState';
 import { alignStep, type AlignMode } from '../tools/align';
 import { activate, type ToolId } from '../tools/registry';
-import { DEFAULT_SETTINGS, type ToolSettings } from '../tools/settings';
+import { DEFAULT_SETTINGS, adoptNewestViaSize, type ToolSettings } from '../tools/settings';
 import type { ToolEvent } from '../tools/tool';
 import {
   applyCommands,
@@ -105,6 +105,7 @@ const fileActions = (set: Set) => ({
   loadProject: (project: Project, { fileName, saved }: LoadOptions) => {
     set((s) => ({
       ...replaceProject(s, project),
+      settings: adoptNewestViaSize(s.settings, project),
       savedProject: saved ? project : null,
       fileName,
       recovery: null,

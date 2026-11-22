@@ -172,6 +172,7 @@ const handlers: ToolHandlers<SelectState> = {
 export const selectTool: Tool<SelectState> = {
   label: 'Select',
   shortcut: 's',
+  group: 'select',
   cursor: 'default',
   initial: IDLE,
   step: handle(handlers),

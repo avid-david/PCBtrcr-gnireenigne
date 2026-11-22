@@ -1,6 +1,7 @@
 import type { Params } from '../core/footprints/footprint';
 import { defaultParams, findFamily } from '../core/footprints/library';
 import type { Feature, PadShape } from '../core/model/features';
+import type { Project } from '../core/model/project';
 
 export type SilkMode = 'line' | 'text';
 
@@ -11,6 +12,11 @@ export type SilkMode = 'line' | 'text';
 export interface ToolSettings {
   readonly trace: { readonly widthMm: number };
   readonly via: { readonly drillMm: number; readonly padMm: number };
+  /**
+   * Whether a via size is known in this session (SPEC F7): until then the via tool only draws
+   * vias to size. Set by a drawn via, an inspector edit of a via or its defaults, or a loaded via.
+   */
+  readonly viaSizeKnown: boolean;
   readonly pad: {
     readonly shape: PadShape;
     readonly widthMm: number;
@@ -45,7 +51,7 @@ const remember: {
   ) => ToolSettings;
 } = {
   trace: (s, f) => ({ ...s, trace: { widthMm: f.widthMm } }),
-  via: (s, f) => ({ ...s, via: { drillMm: f.drillMm, padMm: f.padMm } }),
+  via: (s, f) => ({ ...s, via: { drillMm: f.drillMm, padMm: f.padMm }, viaSizeKnown: true }),
   hole: (s, f) => ({ ...s, hole: { diameterMm: f.diameterMm, plated: f.plated } }),
   point: (s, f) => ({ ...s, point: { diameterMm: f.diameterMm } }),
   pad: (s, f) => ({
@@ -69,6 +75,12 @@ const remember: {
 export const rememberDefaults = (settings: ToolSettings, feature: Feature): ToolSettings =>
   (remember[feature.kind] as (s: ToolSettings, f: Feature) => ToolSettings)(settings, feature);
 
+/** After loading a project, its newest via (the last one in the list) sets the via defaults. */
+export function adoptNewestViaSize(settings: ToolSettings, project: Project): ToolSettings {
+  const newest = project.features.findLast((f) => f.kind === 'via');
+  return newest === undefined ? settings : rememberDefaults(settings, newest);
+}
+
 const CHIP = 'chip';
 const chipFamily = findFamily(CHIP);
 const chipDefaults = chipFamily === undefined ? {} : defaultParams(chipFamily);
@@ -76,6 +88,7 @@ const chipDefaults = chipFamily === undefined ? {} : defaultParams(chipFamily);
 export const DEFAULT_SETTINGS: ToolSettings = {
   trace: { widthMm: 0.25 },
   via: { drillMm: 0.3, padMm: 0.6 },
+  viaSizeKnown: false,
   pad: { shape: 'rect', widthMm: 1, heightMm: 0.6, throughHole: false, drillMm: 1 },
   point: { diameterMm: 0.8 },
   hole: { diameterMm: 1, plated: false },

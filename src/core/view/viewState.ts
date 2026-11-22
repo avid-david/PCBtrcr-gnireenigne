@@ -2,6 +2,7 @@ import { DEFAULT_VIEWPORT, fitToRect, type ScreenSize, type Viewport } from '../
 import { projectBounds } from '../alignment/bounds';
 import type { AnchorId } from '../model/features';
 import type { LayerId, Project } from '../model/project';
+import type { LengthUnit } from './units';
 
 /**
  * How the board is being looked at. Not part of the project file: switching layers or
@@ -19,7 +20,7 @@ export interface ViewState {
   /** A member anchor of the net shown highlighted on every layer (SPEC F5), or null. */
   readonly highlight: AnchorId | null;
   /** Unit lengths are shown and typed in; the model is always in mm. */
-  readonly units: 'mm' | 'mil';
+  readonly units: LengthUnit;
 }
 
 /** What can be shown or hidden per layer besides its photo. */

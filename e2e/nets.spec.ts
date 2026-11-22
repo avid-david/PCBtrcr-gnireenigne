@@ -39,6 +39,11 @@ async function rename(page: Page, from: string, to: string): Promise<void> {
 test('renames, merges, highlights, locks and exports nets; switches to mil', async ({ page }) => {
   await page.goto('/');
   await page.keyboard.press('v');
+  // Editing the via defaults makes a size known, so clicks place vias (SPEC F7). The drill
+  // keeps its 0.3 mm default, which is checked in mil below.
+  const pad = page.getByLabel('Pad (mm)');
+  await pad.fill('0.8');
+  await pad.press('Enter');
   for (const p of [A, B, C, D]) {
     await clickAt(page, p);
   }

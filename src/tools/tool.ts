@@ -3,7 +3,14 @@ import type { Rect } from '../core/geometry/rect';
 import type { Vec2 } from '../core/geometry/vec2';
 import type { Feature, FeatureId } from '../core/model/features';
 import type { LayerId, Project } from '../core/model/project';
+import type { LengthUnit } from '../core/view/units';
 import type { ToolSettings } from './settings';
+
+/**
+ * How close (screen pixels) a click must be to hit or snap to something. Pointer events carry it
+ * in mm as `hitRadiusMm`, so tools can turn other screen distances into mm too.
+ */
+export const HIT_RADIUS_PX = 10;
 
 /** Input for a tool, already converted to board mm by the UI. */
 export type ToolEvent =
@@ -26,6 +33,8 @@ export interface ToolContext {
   readonly activeLayerId: LayerId;
   readonly selection: readonly FeatureId[];
   readonly settings: ToolSettings;
+  /** Unit lengths are shown in (hints). */
+  readonly units: LengthUnit;
   readonly newId: () => string;
 }
 
@@ -37,6 +46,8 @@ export interface ToolResult<S> {
   readonly selection: readonly FeatureId[] | null;
   /** Layer to make active, or `null` to keep it. */
   readonly activateLayer: LayerId | null;
+  /** New tool defaults, e.g. the size of a via drawn to size (SPEC F7); absent keeps them. */
+  readonly settings?: ToolSettings;
 }
 
 /** What a tool wants drawn on top of the board while it works (board mm). */
@@ -58,6 +69,18 @@ export const NO_OVERLAY: ToolOverlay = {
   box: null,
 };
 
+/** Toolbar groups (SPEC F7), in toolbar order. */
+export const TOOL_GROUPS = [
+  { id: 'select', label: null },
+  { id: 'connections', label: 'Connections' },
+  { id: 'components', label: 'Components' },
+  { id: 'annotations', label: 'Annotations' },
+  { id: 'measure', label: 'Measure' },
+  { id: 'align', label: 'Align' },
+] as const;
+
+export type ToolGroup = (typeof TOOL_GROUPS)[number]['id'];
+
 /**
  * An editing tool (SPEC F3): a small state machine with its own cursor, hint and Esc to cancel.
  * Tools are pure: they return commands and never touch the project themselves.
@@ -66,6 +89,8 @@ export interface Tool<S> {
   readonly label: string;
   /** Single key that selects the tool (shown in tooltips). */
   readonly shortcut: string;
+  /** Toolbar group the tool is shown in (SPEC F7). */
+  readonly group: ToolGroup;
   readonly cursor: 'default' | 'crosshair';
   readonly initial: S;
   step(state: S, event: ToolEvent, ctx: ToolContext): ToolResult<S>;

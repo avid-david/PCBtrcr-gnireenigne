@@ -27,6 +27,12 @@ Engineering rules: [CLAUDE.md](../CLAUDE.md).
 | **Anchor** | A point that can carry a connection: pad, via, hole (plated), connection point, trace vertex. |
 | **Net** | A set of anchors that are electrically connected. Derived, never stored. |
 | **Footprint** | A reusable template of pads (e.g. 2×5 header, 0805 resistor) placed as a component. |
+| **Landmark** | A matched point between two photos used by the alignment (F2's control point between layers). |
+| **Object type** | A row in the layer panel (traces, vias, pads, …) with its own View and Select toggles (F8). |
+| **Part type** | What a component is (resistor, N-MOSFET, connector, …), independent of its footprint. Part types are grouped in **categories** (F11). |
+| **Pin name** | Optional name of a component pad (e.g. `SDA`, `VBUS`), shown next to its pin number. |
+| **Probe** | One of the two points picked by the continuity check (F10). |
+| **BOM** | Bill of materials: the placed components grouped into lines with a quantity. Derived, never stored. |
 
 ## Core concepts and rules
 
@@ -53,7 +59,8 @@ Engineering rules: [CLAUDE.md](../CLAUDE.md).
 - The active layer is drawn fully opaque; the other layer can be shown as an overlay with adjustable
   opacity (0–100 %), so the user can see where vias line up. (No tint: decided in
   [ADR 0003](adr/0003-image-display.md).)
-- Per layer: toggle visibility of photo, copper features, silkscreen, text.
+- Per layer: toggle visibility of photo, copper features, silkscreen, text. (Replaced by object rows in
+  M10, see F8.)
 - Features drawn on the inactive layer are dimmed and not editable until that layer is active
   (both-layer features such as vias are always editable).
 
@@ -85,13 +92,13 @@ Each tool is a self-contained state machine with its own cursor, hint text and `
 | --- | --- |
 | Select / move | Click, box-select, move, delete, edit properties in an inspector panel. |
 | Trace | Click to add vertices, double-click/`Enter` to finish. Width property. Snaps to anchors. |
-| Via | Click to place. Drill + pad diameter. Both layers. |
+| Via | Click to place. Drill + pad diameter. Both layers. Drag to size from M7 (F7). |
 | Hole | Plated (both layers, connectable) or non-plated (mechanical, not connectable). |
 | Pad / connection point | Single SMD or TH pad, round/rect/oval; generic test point or wire attach. |
 | Plane | Draw polygon; attach anchors to its net. |
 | Text | Free annotation (not part of the board). |
 | Silkscreen | Lines and text on the silkscreen of a layer (designators, outlines). |
-| Component | Place a footprint, rotate (`R`), flip to other side (`F`), set designator and value. |
+| Component | Place a footprint, rotate (`R`), flip to other side (`F`), set designator and value. Picker by category from M13 (F12). |
 
 - Snapping: to anchors (priority), then optional grid. Snap radius in screen pixels.
 - Undo/redo for every action (`Ctrl+Z` / `Ctrl+Y`), unlimited within a session.
@@ -118,6 +125,146 @@ them without touching tool code.
   are refused with a clear message.
 - Autosave to browser storage every change (debounced); offer recovery on start.
 
+### F7. Tool groups, Shift shortcuts and via sizing
+- The toolbar shows tools in labelled groups, separated by a rule: Select · **Connections** (Trace `T`,
+  Via `V`, Pad `P`, Connection point `C`, Hole `H`, Plane `L`) · **Components** (Component `U`) ·
+  **Annotations** (Silkscreen `K`, Text `X`) · **Measure** (Continuity `M`, F10) · **Align** (`A`). A tool
+  declares its group when it is registered. No fly-out menus: every tool stays one click and one key away.
+  A group without a registered tool is not shown (Measure appears with the Continuity tool in M11).
+- Shortcuts may use Shift + key. A Shift + letter with no binding of its own acts as the plain letter
+  (as today), so holding Shift by accident does not lose a shortcut.
+- **Via tool**
+  - Click (press and release within 3 screen px) places a via at the current size, centred on the
+    grid-snapped press point. Placement happens on release, not on press.
+  - Press and drag: the press point is the centre and the distance to the cursor is the pad radius. A
+    ghost circle follows, and the hint shows the diameter in display units. Release places the via. Its
+    pad becomes the new default, and its drill = pad × (default drill ÷ default pad), rounded to
+    0.01 mm. The pad is clamped to 0.1–10 mm; the radius does not snap to the grid.
+  - **Armed:** while no via size is known in this session, a click does not place anything and the hint
+    asks the user to drag from the centre of a via to its edge; no ghost via is shown while armed and not
+    dragging. A size is known after a drawn via, after
+    an inspector edit of a via or of the via defaults, or after loading a project that has vias (the
+    newest via's size becomes the default).
+  - `Shift+V` picks the Via tool armed, also when it is already active, so the next via is drawn to size.
+  - `Esc` cancels a drag in progress. `Esc` while armed and not dragging disarms, if a size is known.
+- **Resize handles:** when exactly one editable via, hole or connection point is selected, the Select tool
+  shows a round handle on its edge. Dragging the handle sets the diameter (via: the pad, and the drill
+  keeps its ratio), with a live preview, as one undo step. The new size becomes the tool default, like
+  an inspector edit. The handle wins over feature hits under it. Same clamps as drawing.
+- Edge cases: a drag that ends on the centre gives the minimum size. A drag interrupted by a layer
+  switch (`Tab`) is dropped. The drill always stays smaller than the pad and at least 0.01 mm: after
+  rounding it is clamped to 0.01 mm … the largest 0.01 mm step below the pad (a 0.1 mm pad gets at most
+  0.09 mm).
+- Shortcuts: `Shift+V` (Via tool, armed).
+
+### F8. Object types: visibility and selectability
+- Each layer's fieldset in the layer panel keeps Show photo and Mirror. Its Show copper / silkscreen /
+  notes toggles are replaced by **object rows**, each with a **View** and a **Select** toggle: Traces,
+  Pads, Connection points, Planes, Components (outline, designator and the component's pads),
+  Silkscreen, Notes.
+- A shared "Both layers" fieldset has rows for Vias and Holes. Stand-alone through-hole pads follow the
+  active layer's Pads row.
+- **Hidden** (View off): not drawn, not hit by click or box select, not a snap target (trace ends, plane
+  attach, continuity probes). Connectivity, nets, the BOM and all exports are unaffected.
+- **Not selectable** (Select off): drawn, cannot be selected, still a snap target, like a locked net
+  ([ADR 0008](adr/0008-net-styles-and-exporters.md)).
+- Turning a row off removes its features from the current selection. Placing a feature of a hidden type
+  turns that row's View back on, and the status bar says so.
+- Each fieldset has a "Show all" button. Everything is on by default. This is view state: not saved, not
+  undoable.
+
+### F9. Landmarks from overlapping vias
+A via is one object on both layers. When the photos are not quite aligned, the user sees the same hole in
+two places and tends to place a second via next to the first one. That is a free alignment landmark.
+
+- When a newly placed via's pad overlaps an existing via's pad (centre distance smaller than the sum of
+  the radii, and at least 0.05 mm), and both the active layer and another layer have a photo, the status
+  bar offers: "Overlaps via at (x, y) — same via?" with **Use as landmark** and **Keep both**.
+- **Use as landmark** (one undo step): removes the new via and adds a matched point. Its pixel on the
+  other layer is the existing via's centre mapped through that layer's current transform. Its pixel on
+  the active layer is the new via's centre mapped through the active layer's transform. The alignment is
+  solved again; the existing via keeps its board position. This assumes the existing via was placed
+  against the other photo (recorded in the ADR).
+- The offer goes away on Keep both, `Esc`, any other edit, or the next via. Only one offer is shown at a
+  time; ignoring it keeps both vias.
+- The Align panel has a per-browser preference "Offer landmarks from overlapping vias" (on by default).
+- The new match behaves like any other match: it has a residual, can be flagged as an outlier, and can be
+  deleted in the Align panel.
+- Edge cases: centres closer than 0.05 mm give no offer (they carry no information). With only one photo
+  there is no offer. If the existing via is hidden or in a locked net, the offer still appears, and
+  accepting does not change the existing via.
+
+### F10. Continuity check
+- Tool **Continuity** (`M`, Measure group). The first click sets probe **A**, the second sets probe **B**.
+- A probe is the anchor under the cursor (snap rules of the trace tool, visible features only), else the
+  trace or plane under the cursor, else nothing (the hint says "No copper here").
+- The result shows in the hint and the status bar:
+  - **Connected**: the net name and the path, e.g. "2 traces · 1 via · 2 traces".
+  - **Not connected**: the net name of each probe.
+  - The same anchor twice: "Same point".
+- When connected, the shortest path (fewest features) from A to B is drawn at full strength and
+  everything else dimmed, like the net highlight. The probes are shown as markers A and B.
+- A third click starts a new check from that point. `Esc` clears the check.
+- The result is tool state: not saved and not an edit. It is recomputed when the project changes (e.g.
+  undo). If a probe's anchor is deleted, the check clears.
+- Hidden features still conduct, but they are not drawn and cannot be probes.
+- Shortcuts: `M`.
+
+### F11. Component details
+- A component additionally has a **part type**, **description**, **manufacturer**, **part number** and
+  **datasheet**. The datasheet is text, shown as an "Open" link when it is an http(s) URL; the link opens
+  in a new browser tab and the app never fetches it. Each component pad has an optional **pin name**.
+- Inspector for a component: Part type (a choice grouped by category), Designator, Value, Description,
+  Manufacturer, Part number, Datasheet, Rotation. A Pins table lists each pin number with an editable
+  name; `Enter` commits and moves to the next pin.
+- Part types are a registry (id, label, category, designator prefix, suggested footprints); adding one
+  is adding an entry. Starter set:
+
+  | Category | Part types (designator prefix) |
+  | --- | --- |
+  | Passives | Resistor (R), Capacitor (C), Inductor (L), Ferrite bead (FB), Fuse (F), Crystal / resonator (Y) |
+  | Diodes | Diode, Zener, TVS, LED (all D) |
+  | Transistors | NPN, PNP, N-MOSFET, P-MOSFET, Unknown transistor (all Q) |
+  | ICs | IC, Voltage regulator (U) |
+  | Connectors | Connector (J), Test point (TP) |
+  | Switches | Switch (SW), Relay (K) |
+  | Other | Unknown part (U) |
+
+- Changing the part type renames an **automatic** designator (the old prefix + a number) to the new
+  prefix with the next free number, e.g. Q1 → D3 when a SOT-23 turns out to be a diode. A designator
+  the user typed stays. The change is one undo step.
+- **Hover readout** (every tool): over a component pad the status bar shows e.g.
+  "U3 pin 5 (SDA) · net I2C_SDA"; over any other anchor, its kind and net.
+- Project file version 4. The 3 → 4 migration infers the part type from the designator's letter prefix:
+  R, C, L, D, Q (→ Unknown transistor), U, J / P / CN (→ Connector), SW / S (→ Switch), Y / X (→ Crystal),
+  F, FB, K, TP; anything else → Unknown part. The other new fields start empty.
+
+### F12. Component picker by category
+- Replaces the flat Footprint list of the component tool: **category → part type → footprint**.
+- The footprint list shows the part type's suggested footprints first, then "All footprints" (the whole
+  library). The footprint stays master: any footprint can carry any part type, e.g. SOT-23-3 as an
+  N-MOSFET, a diode or a regulator.
+- Footprint parameters and Value work as today. The designator prefix defaults to the part type's prefix
+  and stays editable.
+- A search field filters part types and footprints by name (e.g. "sot", "mosfet"). Typing in it never
+  triggers shortcuts. The last choice is remembered for the session.
+- Edge cases: a library entry that no part type suggests appears only under "All footprints". A registry
+  test fails if a part type suggests a footprint that is not in the library.
+
+### F13. Bill of materials
+- New side panel tab **Parts** (Layers · Nets · Parts), listing one **line** per combination of part
+  type, value, footprint name, manufacturer and part number.
+- Columns: Qty, Designators (natural order, e.g. `R1, R2, R5`), Type, Value, Footprint, Manufacturer,
+  Part number, Description (distinct descriptions joined with `; `), Datasheet (the first non-empty one).
+- Lines are sorted by category order, then by their first designator. An empty designator shows as `?`.
+  Duplicate designators are flagged ("R3 used twice").
+- Clicking a designator selects that component and makes its side the active layer.
+- Export: **BOM CSV** (RFC 4180, CRLF, the columns above) and **BOM JSON** (`{ "lines": [...] }`, with
+  designators as arrays). Exporters declare a group (`netlist` or `bom`), and each panel shows the
+  export buttons of its own group.
+- Only components count; stand-alone pads and connection points are not parts. The BOM is derived from
+  the project and never stored.
+
 ## Non-functional requirements
 - Smooth interaction (≥ 50 fps pan/zoom) with 2 × 24 MP images and 5 000 features on a mid-range laptop.
 - Works in current Chrome, Edge and Firefox; keyboard- and mouse-driven; usable at 1366×768.
@@ -128,7 +275,7 @@ them without touching tool code.
 - `Tool` registry — new editing tools.
 - Feature kind registry — new feature types with their own render, hit-test and serialization.
 - Footprint library — JSON files / generator functions.
-- `Exporter` interface — KiCad, Gerber, SVG, BOM exporters later.
+- `Exporter` interface — KiCad, Gerber, SVG, BOM exporters later (BOM planned in F13).
 - `ImageAnalyzer` interface — future automatic via/trace detection.
 - Layer list is an array, not two hard-coded fields, so 4-layer boards are possible later.
 
@@ -144,3 +291,122 @@ Each milestone ends with passing CI, updated docs, and a short demo note in the 
 | M4 | F6 persistence with schema versioning and autosave. | Round-trip tests for every feature kind; e2e: save, reload, identical state. |
 | M5 | F4 footprints + component tool, plane, text, silkscreen. | Starter library complete; components' pads join nets. |
 | M6 | F5 nets panel, highlight, netlist export. Polish, shortcuts help overlay. | v0.1.0 release tagged. |
+
+### Changes to existing behaviour
+What M7–M14 change in what M0–M6 do, and which existing tests must change with it.
+
+| Milestone | Change | Existing tests that must change, and why |
+| --- | --- | --- |
+| M7 | Shift + letter becomes its own key combination (falling back to the plain letter when unbound). | `src/ui/shortcuts.test.tsx` "names key combinations with Ctrl and Shift, ignoring Alt" expects Shift+T to give `t`; it will give `Shift+t`. |
+| M7 | Vias are placed on release, not on press; a click while the Via tool is armed places nothing. | `src/ui/shortcuts.test.tsx` "selects tools, toggles the grid, and undoes/redoes" sends only a pointerdown. `src/tools/placeSelect.test.ts` "place one feature per click with the current defaults and select it", "show a ghost under the cursor, snapped to the grid" and "runs the active tool generically" (it sends only a pointerdown to the Via tool) start in a fresh, armed session. `src/render/scene.test.ts` "outlines the selection and shows what the tool is doing" builds a via tool state without the new fields and expects a ghost with the armed default settings. E2E `tracing.spec.ts`, `nets.spec.ts` and `persistence.spec.ts` place vias by click; their first via must be drawn by drag, or the test must start with a known via size. `nets.spec.ts` also checks that the default 0.3 mm drill shows as 11.81 mil, which depends on that default. |
+| M7 | The flat toolbar becomes grouped (Plane moves into Connections); groups without tools are hidden until their tool exists. | `e2e/shell.spec.ts` "fits 1366×768" must still pass (a check, not a rewrite; spacing may need tightening). |
+| M10 | Per-layer copper / silkscreen / notes toggles become object rows. Hidden features can no longer be selected or snapped to. Vias and holes get their own rows instead of following the active layer's toggles ([ADR 0007](adr/0007-footprints-components-planes.md)). | `src/ui/componentPanels.test.tsx` "shows and hides copper, silkscreen and notes per layer" (the toggles are gone). `src/render/featureScene.test.ts` "hides copper, silkscreen and notes per layer" and "reuses the result until the project, layer or visibility changes" (`hiddenContent` is replaced). |
+| M12 | `Component` and its pads gain fields; project file version 4. | `src/core/io/fixtures.test.ts` gains the version 4 fixture, and the version 3 fixture must load as version 4. `src/ui/componentPanels.test.tsx` "edits designator, value and rotation, and rotates or flips" covers more fields. The builders in `src/core/model/features.test-support.ts` need the new fields. `src/core/io/projectFile.test.ts` follows `CURRENT_SCHEMA_VERSION` and should pass unchanged. |
+| M13 | The flat Footprint list becomes the category picker; the default designator prefix comes from the part type. | `src/ui/componentPanels.test.tsx` "chooses a family, resets its parameters and prefix, and refuses out-of-range values". `src/tools/newTools.test.ts` "places the chosen footprint with the next designator, pads with fresh ids" (`settings.component` gains a part type). E2E `components.spec.ts` helper `chooseFootprint` selects from the old list. |
+| M14 | `Exporter` gains a group; the Nets panel shows only netlist exporters; the side panel gets a third tab. | `src/core/export/exporters.test.ts`. `src/ui/netsPanel.test.tsx` "lists nets with members, filters them and exports" and "shows the nets tab and exports through the app". |
+
+### Planned milestones
+Same rules as above: one milestone per PR (reviewable in under an hour), passing CI, updated docs and a
+short demo note. Ordered by dependency, then value: M7–M9 build on the via tool, M10 comes before M11
+because probes respect visibility, and M12 → M13 → M14 go from fields to picker to BOM.
+
+#### M7 — Tool groups, Shift shortcuts, via sizing
+- **Status:** done ([ADR 0009](adr/0009-tool-groups-shift-shortcuts-via-sizing.md)).
+- **Scope:** F7 without resize handles: grouped toolbar, Shift + key shortcuts, drawing a via to size,
+  the armed state, `Shift+V`.
+- **Done when:** the toolbar shows the groups; dragging from a via's centre sets its size and the default;
+  later clicks place vias of that size; a fresh session starts armed; `Shift+V` arms again.
+- **Tests:** unit: `comboOf` and the Shift fallback, the via tool state machine (click vs drag threshold,
+  armed rules, drill ratio, clamps, `Esc`). Property: "a drawn pad is twice the drag distance, clamped".
+  E2E: draw one via by drag, click two more, check their size in the inspector.
+- **Schema:** no change.
+- **ADR:** 0009 (tool groups, Shift combinations, via sizing).
+
+#### M8 — Resize handles
+- **Scope:** F7 resize handles for vias, holes and connection points.
+- **Done when:** dragging the handle of a selected via, hole or point resizes it as one undo step and
+  updates the tool default.
+- **Tests:** unit: select tool handle states, handle priority over features, clamps. Property: "undo after
+  a resize restores the exact previous project". E2E: resize a via and undo.
+- **Schema:** no change.
+- **ADR:** amend 0009.
+
+#### M9 — Landmarks from overlapping vias
+- **Scope:** F9.
+- **Done when:** placing a via over an existing one on the other photo offers a landmark; accepting adds
+  one match, removes the new via and re-solves the alignment; undo brings back the previous state.
+- **Tests:** unit: the overlap rule (sum of radii, 0.05 mm minimum, one photo only), mapping both centres
+  to image pixels, the preference. Property: "a landmark from a perfectly aligned via pair has a
+  residual of about 0". E2E: on the synthetic photos with a deliberately mis-aligned bottom, accepting
+  landmarks lowers the RMS shown in the Align panel.
+- **Schema:** no change (uses the existing matched points).
+- **ADR:** 0010 (landmarks from vias, which photo each pixel comes from).
+
+#### M10 — Object types panel
+- **Scope:** F8.
+- **Done when:** every object row hides or locks its type, per layer and for both-layer types; hidden
+  features cannot be selected or snapped to; "Show all" restores everything.
+- **Tests:** unit: view-state functions, scene filtering, select and snap filtering, selection pruning.
+  Property: "hiding or locking object types never changes the nets". E2E: hide vias, then a click on a
+  via selects nothing and a trace does not snap to it.
+- **Schema:** no change (view state).
+- **ADR:** 0011 (object types; supersedes the visibility part of ADR 0007).
+
+#### M11 — Continuity check
+- **Scope:** F10.
+- **Done when:** two clicks report Connected or Not connected and highlight the path, including through
+  vias; `Esc` clears; undo updates the result.
+- **Tests:** unit: `connectionPath` and the result text. Property: "a path exists if and only if both
+  anchors are in the same net", "consecutive features on a path share an anchor", "no shorter path
+  exists than the one returned". E2E: probe pad A and pad C on the two-sided tracing board, then
+  delete the via and see Not connected.
+- **Schema:** no change.
+- **ADR:** 0012 (connection graph and shortest path by feature count).
+
+#### M12 — Component details
+- **Scope:** F11: new component and pin fields, part type registry, designator rename, hover readout.
+- **Done when:** every new field and pin name can be edited, saved and reloaded; changing the part type
+  renames an automatic designator; hovering a pad shows its pin name and net.
+- **Tests:** unit: part type registry, rename rule, the migration's inference table. Round-trip for a
+  component with every field set. Fixture: `v3-example.json` loads as version 4; a new
+  `v4-example.json` is committed. E2E: edit the fields and pin names, save, reopen, and check they are
+  unchanged.
+- **Schema:** **version 4**. Component gains `partType`, `description`, `manufacturer`, `partNumber` and
+  `datasheet`; component pads gain `name`. Migration 3 → 4 infers `partType` as in F11 and sets the other
+  fields to empty strings.
+- **ADR:** 0013 (part types, component fields, file format version 4).
+
+#### M13 — Categorised picker
+- **Scope:** F12.
+- **Done when:** a component can be placed through category → part type → footprint, with search and
+  "All footprints"; the placed component carries that part type.
+- **Tests:** unit: picker filtering, suggested-first ordering, a registry ↔ library consistency test.
+  E2E: place an N-MOSFET on a SOT-23-3 footprint; it gets designator Q1 and that part type.
+- **Schema:** no change.
+- **ADR:** amend 0013.
+
+#### M14 — Bill of materials
+- **Scope:** F13.
+- **Done when:** the Parts tab lists grouped lines that update with every edit and exports CSV and JSON.
+- **Tests:** unit: grouping key, natural designator order, duplicate flag, CSV quoting, exporter groups.
+  Property: "the quantities add up to the number of components". E2E: place parts, export the BOM CSV
+  and check its rows.
+- **Schema:** no change (the BOM is derived).
+- **ADR:** 0014 (BOM grouping and exporter groups).
+
+## Backlog
+Ideas that do not fit yet. Each needs a SPEC section and a milestone before work starts.
+
+- Ruler / distance measurement in the Measure group.
+- Expected multimeter readings between two probes, computed from component values.
+- Scan the whole board for overlapping vias and suggest all landmarks at once.
+- Pin names in netlist exports (changes the export format).
+- Footprints for the new part types: SOD-123/323, SMA/SMB, SOT-223, SOT-89, DPAK, axial and radial
+  through-hole, 3/5 mm LEDs, tactile switches, USB and JST connectors, HC-49 crystals. Best done right
+  after M13.
+- Find a component or net by name and zoom to it.
+- Resize handles for rectangular pads and for trace width.
+- Automatic plane containment (already noted as a later enhancement).
+- KiCad schematic / PCB export (a v1 non-goal).
+- Datasheet import and automatic part identification: out of scope while the app must work without
+  network access and send no data anywhere.

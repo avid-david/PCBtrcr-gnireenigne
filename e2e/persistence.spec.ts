@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { strFromU8, unzipSync } from 'fflate';
 import { bottomPhoto, CORNER_COLORS, topPhoto } from './support/boardPhotos';
-import { clickBlob, importPhoto, save, startAligning } from './support/editor';
+import { clickBlob, drawVia, importPhoto, save, startAligning } from './support/editor';
 
 interface Autosaved {
   readonly dirty: boolean;
@@ -40,6 +40,16 @@ async function clickBoard(page: Page, points: readonly [number, number][]): Prom
   }
 }
 
+/** Draws a via centred on a point given as fractions of the board view, 6 px in radius. */
+async function drawViaAt(page: Page, [fx, fy]: [number, number]): Promise<void> {
+  const box = await page.getByTestId('board-host').boundingBox();
+  if (box === null) {
+    throw new Error('board view is not visible');
+  }
+  const centre = { x: box.x + box.width * fx, y: box.y + box.height * fy };
+  await drawVia(page, centre, { x: centre.x + 6, y: centre.y });
+}
+
 /** How many features an autosave holds (dirty ones only). */
 const featureCount = (record: Autosaved | null): number =>
   record?.dirty === true
@@ -58,7 +68,7 @@ test('saves a project, reloads the page and opens it again unchanged', async ({ 
   }
   await page.keyboard.press('a');
   await page.keyboard.press('v');
-  await clickBoard(page, [[0.4, 0.4]]);
+  await drawViaAt(page, [0.4, 0.4]);
   await page.keyboard.press('t');
   await clickBoard(page, [
     [0.4, 0.4],
@@ -104,7 +114,7 @@ test('offers to restore unsaved work after a reload, and can discard it', async 
   await importPhoto(page, 'top', topPhoto());
   await importPhoto(page, 'bottom', bottomPhoto());
   await page.keyboard.press('v');
-  await clickBoard(page, [[0.5, 0.5]]);
+  await drawViaAt(page, [0.5, 0.5]);
   await expect.poll(async () => featureCount(await autosaved(page))).toBe(1);
 
   await page.reload();
@@ -121,7 +131,8 @@ test('offers to restore unsaved work after a reload, and can discard it', async 
   expect(json.project.features.map((f) => f.kind)).toEqual(['via']);
   expect(Object.keys(restored).filter((p) => p.startsWith('images/'))).toHaveLength(2);
 
-  // Unsaved again, then discarded: the next start offers nothing.
+  // Unsaved again, then discarded: the next start offers nothing. The restored via made its
+  // size known, so a click places the next one.
   await page.keyboard.press('v');
   await clickBoard(page, [[0.3, 0.3]]);
   await expect.poll(async () => featureCount(await autosaved(page))).toBe(2);
