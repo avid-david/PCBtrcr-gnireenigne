@@ -32,20 +32,47 @@ describe('shortcuts', () => {
       mods: Partial<Record<'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey', boolean>> = {},
     ) =>
       comboOf({ key: k, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...mods });
-    expect(key('T', { shiftKey: true })).toBe('t');
+    expect(key('T', { shiftKey: true })).toBe('Shift+t');
     expect(key('Z', { ctrlKey: true, shiftKey: true })).toBe('Ctrl+Shift+z');
     expect(key('y', { metaKey: true })).toBe('Ctrl+y');
     expect(key('Tab')).toBe('Tab');
+    expect(key('Tab', { shiftKey: true })).toBe('Shift+Tab');
     expect(key('a', { altKey: true })).toBeNull();
+  });
+
+  it('runs the plain key for a Shift combination without a binding of its own', () => {
+    const store = createEditorStore();
+    expect(runShortcut(store, 'Shift+t')).toBe(true);
+    expect(store.getState().tool.id).toBe('trace');
+    expect(runShortcut(store, 'Shift+Tab')).toBe(true);
+    expect(store.getState().view.activeLayerId).toBe('bottom');
+    expect(runShortcut(store, 'Shift+q')).toBe(false);
+    expect(runShortcut(store, 'Ctrl+Shift+y')).toBe(false);
+    expect(runShortcut(store, 'Shift+t', { typing: true })).toBe(false);
+  });
+
+  it('Shift+V picks the Via tool armed, also when it is already active', () => {
+    const store = createEditorStore();
+    store.getState().updateSettings((s) => ({ ...s, viaSizeKnown: true }));
+    expect(runShortcut(store, 'Shift+v')).toBe(true);
+    expect(store.getState().tool).toMatchObject({ id: 'via', state: { armed: true } });
+    store.getState().sendTool({ type: 'cancel' });
+    expect(store.getState().tool).toMatchObject({ id: 'via', state: { armed: false } });
+    runShortcut(store, 'Shift+v');
+    expect(store.getState().tool).toMatchObject({ id: 'via', state: { armed: true } });
+    expect(runShortcut(store, 'Shift+v', { typing: true })).toBe(false);
   });
 
   it('selects tools, toggles the grid, and undoes/redoes', () => {
     const store = createEditorStore({ newId: () => 'v1' });
     runShortcut(store, 'v');
     expect(store.getState().tool.id).toBe('via');
+    // A fresh session knows no via size, so the first via is drawn by dragging (SPEC F7).
     store
       .getState()
       .sendTool({ type: 'pointerdown', board: { x: 1, y: 1 }, hitRadiusMm: 1, shift: false });
+    store.getState().sendTool({ type: 'pointermove', board: { x: 2, y: 1 }, hitRadiusMm: 1 });
+    store.getState().sendTool({ type: 'pointerup', board: { x: 2, y: 1 } });
     expect(store.getState().project.features).toHaveLength(1);
     runShortcut(store, 'Ctrl+z');
     expect(store.getState().project.features).toHaveLength(0);

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { hole, testPoint, via } from '../core/model/features.test-support';
 import { toolTemplateKind } from './registry';
-import { DEFAULT_SETTINGS, rememberDefaults } from './settings';
+import { adoptNewestViaSize, DEFAULT_SETTINGS, rememberDefaults } from './settings';
+import { createProject } from '../core/model/project';
 
 describe('rememberDefaults', () => {
   it('takes hole and point sizes as the next defaults', () => {
@@ -31,5 +32,25 @@ describe('toolTemplateKind', () => {
     expect(toolTemplateKind('silk', silkText)).toBe('silkText');
     expect(toolTemplateKind('select', DEFAULT_SETTINGS)).toBeNull();
     expect(toolTemplateKind('align', DEFAULT_SETTINGS)).toBeNull();
+  });
+});
+
+describe('via size known (SPEC F7)', () => {
+  it('is unknown in a fresh session and known once a via is remembered', () => {
+    expect(DEFAULT_SETTINGS.viaSizeKnown).toBe(false);
+    expect(rememberDefaults(DEFAULT_SETTINGS, via('v', { x: 0, y: 0 })).viaSizeKnown).toBe(true);
+    expect(rememberDefaults(DEFAULT_SETTINGS, testPoint('p', { x: 0, y: 0 })).viaSizeKnown).toBe(
+      false,
+    );
+  });
+
+  it('adopts the newest via of a project, or keeps the settings without one', () => {
+    const newest = { ...via('b', { x: 1, y: 0 }), padMm: 2, drillMm: 1 };
+    const project = { ...createProject(), features: [via('a', { x: 0, y: 0 }), newest] };
+    expect(adoptNewestViaSize(DEFAULT_SETTINGS, project)).toMatchObject({
+      via: { padMm: 2, drillMm: 1 },
+      viaSizeKnown: true,
+    });
+    expect(adoptNewestViaSize(DEFAULT_SETTINGS, createProject())).toBe(DEFAULT_SETTINGS);
   });
 });

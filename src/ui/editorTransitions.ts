@@ -101,5 +101,6 @@ export function sendToTool(
     ...edited,
     selection: pruneSelection(result.selection ?? edited.selection ?? s.selection, project),
     view: layer === null ? s.view : setActiveLayer(s.view, project, layer),
+    ...(result.settings === undefined ? {} : { settings: result.settings }),
   };
 }

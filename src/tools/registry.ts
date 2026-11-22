@@ -7,7 +7,6 @@ import {
   padTool,
   pointTool,
   textTool,
-  viaTool,
   type PlaceState,
   type TemplateKind,
 } from './place';
@@ -24,12 +23,13 @@ import {
   type ToolResult,
 } from './tool';
 import { traceTool, type TraceState } from './trace';
+import { viaTool, type ViaState } from './via';
 
 /** The state type of every registered tool. Add a tool here and in `TOOLS`. */
 export interface ToolStates {
   readonly select: SelectState;
   readonly trace: TraceState;
-  readonly via: PlaceState;
+  readonly via: ViaState;
   readonly pad: PlaceState;
   readonly point: PlaceState;
   readonly hole: PlaceState;

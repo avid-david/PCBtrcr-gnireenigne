@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { alignState } from './editorTransitions';
 import { setLayerImage } from '../core/commands/command';
 import { EMPTY_HISTORY } from '../core/commands/history';
+import { via } from '../core/model/features.test-support';
 import { createProject } from '../core/model/project';
 import { setOverlayOpacity } from '../core/view/viewState';
 import { createEditorStore, DEFAULT_FILE_NAME, isDirty } from './store';
@@ -133,5 +134,41 @@ describe('editor store files', () => {
     store.getState().newProject();
     expect(store.getState().fileName).toBe(DEFAULT_FILE_NAME);
     expect(isDirty(store.getState())).toBe(false);
+  });
+});
+
+describe('editor store via size (SPEC F7)', () => {
+  const withVias = {
+    ...createProject(),
+    features: [via('a', { x: 0, y: 0 }), { ...via('b', { x: 5, y: 0 }), padMm: 1.2, drillMm: 0.5 }],
+  };
+
+  it('a loaded project with vias makes its newest via the known default size', () => {
+    const store = createEditorStore();
+    expect(store.getState().settings.viaSizeKnown).toBe(false);
+    store.getState().loadProject(withVias, { fileName: 'b', saved: true });
+    expect(store.getState().settings.via).toEqual({ padMm: 1.2, drillMm: 0.5 });
+    expect(store.getState().settings.viaSizeKnown).toBe(true);
+  });
+
+  it('a project without vias leaves the size unknown; a new project keeps a known one', () => {
+    const store = createEditorStore();
+    store.getState().loadProject(createProject(), { fileName: 'b', saved: true });
+    expect(store.getState().settings.viaSizeKnown).toBe(false);
+    store.getState().loadProject(withVias, { fileName: 'b', saved: true });
+    store.getState().newProject();
+    expect(store.getState().settings.viaSizeKnown).toBe(true);
+  });
+
+  it('a via drawn to size becomes the default for the next one', () => {
+    const store = createEditorStore({ newId: () => 'v' });
+    store.getState().setTool('via');
+    store
+      .getState()
+      .sendTool({ type: 'pointerdown', board: { x: 0, y: 0 }, hitRadiusMm: 0.5, shift: false });
+    store.getState().sendTool({ type: 'pointermove', board: { x: 0.5, y: 0 }, hitRadiusMm: 0.5 });
+    store.getState().sendTool({ type: 'pointerup', board: { x: 0.5, y: 0 } });
+    expect(store.getState().settings.via).toEqual({ padMm: 1, drillMm: 0.5 });
+    expect(store.getState().settings.viaSizeKnown).toBe(true);
   });
 });

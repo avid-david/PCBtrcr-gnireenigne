@@ -87,7 +87,7 @@ export function placeHandlers(info: Pick<PlaceToolInfo, 'kind'>): ToolHandlers<P
   };
 }
 
-/** A tool that places one feature per click (via, pad, connection point, hole). */
+/** A tool that places one feature per click (pad, connection point, hole, text). */
 function placeTool(info: PlaceToolInfo): Tool<PlaceState> {
   return {
     label: info.label,
@@ -112,14 +112,6 @@ function placeTool(info: PlaceToolInfo): Tool<PlaceState> {
     }),
   };
 }
-
-export const viaTool = placeTool({
-  kind: 'via',
-  label: 'Via',
-  shortcut: 'v',
-  group: 'connections',
-  hint: 'Click to place a via (on both layers).',
-});
 
 export const padTool = placeTool({
   kind: 'pad',

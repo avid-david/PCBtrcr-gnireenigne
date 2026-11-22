@@ -46,6 +46,8 @@ export interface ToolResult<S> {
   readonly selection: readonly FeatureId[] | null;
   /** Layer to make active, or `null` to keep it. */
   readonly activateLayer: LayerId | null;
+  /** New tool defaults, e.g. the size of a via drawn to size (SPEC F7); absent keeps them. */
+  readonly settings?: ToolSettings;
 }
 
 /** What a tool wants drawn on top of the board while it works (board mm). */

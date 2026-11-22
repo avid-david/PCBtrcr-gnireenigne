@@ -179,8 +179,14 @@ describe('buildScene features', () => {
   it('outlines the selection and shows what the tool is doing', () => {
     const scene = buildScene(input({ selection: ['v1'] }));
     expect(scene.selection).toEqual([{ minX: 9.7, minY: -0.3, maxX: 10.3, maxY: 0.3 }]);
-    const viaTool = { id: 'via', state: { cursor: { x: 1, y: 1 } } } as const;
-    expect(buildScene(input({ tool: viaTool })).toolOverlay.ghost).toMatchObject({ kind: 'via' });
+    const viaTool = {
+      id: 'via',
+      state: { cursor: { x: 1, y: 1 }, drag: null, armed: false },
+    } as const;
+    const known = { ...DEFAULT_SETTINGS, viaSizeKnown: true };
+    expect(buildScene(input({ tool: viaTool, settings: known })).toolOverlay.ghost).toMatchObject({
+      kind: 'via',
+    });
     const moving = {
       id: 'select',
       state: { mode: 'moving', start: { x: 10, y: 0 }, ids: ['v1'], delta: { x: 1, y: 0 } },
