@@ -319,15 +319,16 @@ two places and tends to place a second via next to the first one. That is a free
 A list of places where the tracing is probably unfinished or wrong, so the user can work through them
 instead of searching the board by eye.
 
-- New side panel tab **Check** (Layers · Nets · Parts · Check). Its label shows the number of findings,
-  e.g. "Check (7)".
+- New side panel tab **Check** (Layers · Nets · Parts · Check). While it is shown, its label shows the
+  number of findings, e.g. "Check (7)". While another tab is shown the label is just "Check", because
+  the list is not computed then (see below), so it never shows a stale count.
 - Rules are a registry (id, label, a pure function from the project and its nets to findings); adding a
   rule is adding an entry. Starter rules, in this order:
 
   | Rule | Finds | Example text |
   | --- | --- | --- |
   | Unconnected pin | A component pad that is alone in its net: no trace, via, plane or other pad joins it. | "U3 pin 5 (SDA) is not connected" |
-  | Touching, not connected | A trace end that lies on another anchor of the same layer (inside a pad's shape, a via's pad, a plated hole, a connection point, or within half the larger trace width of another trace's vertex) and is not in that anchor's net. | "Trace end lies on U3 pin 5 but is not connected to it" |
+  | Touching, not connected | A trace end that lies on copper of the same layer that is not in its net: inside a pad's shape, a via's pad, a plated hole or a connection point, or within half the larger trace width of another trace's vertex or segment. The end's own trace does not count. When the end lies on an anchor and also on a segment, the anchor is named. | "Trace end lies on U3 pin 5 but is not connected to it" · "Trace end lies on a trace of net GND but is not connected to it" |
   | Open trace end | The first or last vertex of a trace that is free and that no other trace vertex binds to and no plane attaches, and that no "Touching, not connected" finding already covers. | "Trace end at (12.40, 8.10) connects to nothing" |
   | Unused via | A via or plated hole that is alone in its net. | "Via at (30.00, 4.25) connects nothing" |
   | Designator | A component with an empty designator, or a designator used more than once (the same rule as the BOM flag, F13). | "R3 used twice" · "Component without designator" |
@@ -341,8 +342,8 @@ instead of searching the board by eye.
   it becomes the selection (the component for a pin finding, the trace for a trace-end finding) and its
   side becomes the active layer. A hidden object type is turned back on and the status bar says so.
   Members of a locked net are framed, not selected.
-- The list is recomputed after every edit (including undo) while the tab is shown, and not at all while
-  it is hidden. An empty list says "No findings".
+- The list is computed when the tab is opened and again after every edit (including undo) while the tab
+  is shown, and not at all while it is hidden. An empty list says "No findings".
 - Findings are hints, not errors: a pin with no connection can be correct (an unused pin). Nothing blocks
   saving or exporting. The findings are not saved and not exported.
 - Hidden features (F8) are still checked; the check works on the project, not on what is drawn.
@@ -559,9 +560,11 @@ checked in every orientation at once.
   each kind. Clicking a finding selects and frames its feature. Fixing it (or undoing) updates the list.
   On the 5 000-feature perf fixture (`pnpm perf`) one check takes under 100 ms.
 - **Tests:** unit (core): each rule on small hand-made projects, including the edge cases in F16 (bound
-  ends, two free ends at one point, trace end inside a plane, mechanical holes, a plane-attached pin),
-  ordering, and the shared designator rule. UI: group checkboxes change the count; `Enter` on a row
-  jumps. Property: "connecting a reported open trace end to an anchor never adds a finding of the same
+  ends, two free ends at one point, a trace end on the middle of another trace's segment, a trace end
+  on its own trace, trace end inside a plane, mechanical holes, a plane-attached pin), ordering, and
+  the shared designator rule. UI: group checkboxes change the count; `Enter` on a row jumps; the label
+  shows a count only while the tab is shown, and reopening the tab after an edit made on another tab
+  shows the new count. Property: "connecting a reported open trace end to an anchor never adds a finding of the same
   rule", "no finding ever names a feature that is not in the project", "a project whose every anchor is
   in a net with another anchor has no Unconnected pin or Unused via findings". E2E: on the tracing
   board, delete the trace to pad C, see "Unconnected pin" in the Check tab, click it, and check that the
