@@ -374,6 +374,7 @@ are ready after M14, and Find comes first because it helps more on a large board
 - **ADR:** 0009 (tool groups, Shift combinations, via sizing).
 
 #### M8 — Resize handles
+- **Status:** done ([ADR 0009](adr/0009-tool-groups-shift-shortcuts-via-sizing.md), M8 section).
 - **Scope:** F7 resize handles for vias, holes and connection points.
 - **Done when:** dragging the handle of a selected via, hole or point resizes it as one undo step and
   updates the tool default; below 8 px on-screen radius no handle is shown and a press moves it.
